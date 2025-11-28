@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
         //    }
         //}
         
-        RenderLine(surface, WIDTH, HEIGHT, O, Vector3{ 50, 100, 0 }, Vector3{ 255, 0, 0 });
+        RenderLine(surface, WIDTH, HEIGHT, Vector3{ 50, 200, 0 },O, Vector3{ 255, 0, 0 });
 
         // Then update the window to show surface
         SDL_UpdateWindowSurface(window);

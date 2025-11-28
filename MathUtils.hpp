@@ -57,13 +57,22 @@ inline Vector3 MultiplyVectorByScalar(Vector3 v, float s)
 inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
 {
     Line line{};
+    if (P0.x > P1.x)
+    {
+        Vector3 holder;
+
+        holder = P1;
+        P1 = P0;
+        P0 = holder;
+    }
     float a = (P1.y - P0.y) / (P1.x - P0.x);
-    float b = P0.y - a * P0.x;
+    float y = P0.y;
     float endX = P1.x - P0.x;
 
     for (float x = P0.x; x <= endX; x++)
     {
-        line.points.push_back({ x, a * x + b });
+        line.points.push_back({ x, y});
+        y = y + a;
     }
 
     line.color = color;
