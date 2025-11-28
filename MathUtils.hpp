@@ -21,20 +21,22 @@ struct QuadraticEquationSolutions
     float t1;
     float t2;
 };
-
-inline float Length(Vector3 v)
+inline Vector3 operator+(Vector3 v, Vector3 w)
 {
-    return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    return Vector3{ v.x + w.x, v.y + w.y, v.z + w.z };
+}
+inline Vector3 operator-(Vector3 v, Vector3 w)
+{
+    return(Vector3{ v.x - w.x, v.y - w.y, v.z - w.z });
 }
 
-inline float DotProduct(Vector3 v, Vector3 w)
+inline float operator*(Vector3 v, Vector3 w)
 {
     return (v.x * w.x + v.y * w.y + v.z * w.z);
 }
-
-inline Vector3 SubstractV2FromV1(Vector3 v, Vector3 w)
+inline float Length(Vector3 v)
 {
-    return(Vector3{ v.x - w.x, v.y - w.y, v.z - w.z });
+    return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 inline Vector3 MultiplyVectorByScalar(Vector3 v, float s)
@@ -42,10 +44,6 @@ inline Vector3 MultiplyVectorByScalar(Vector3 v, float s)
     return Vector3{ s * v.x, s * v.y, s * v.z };
 }
 
-inline Vector3 SumTwoVectors(Vector3 v, Vector3 w)
-{
-    return Vector3{ v.x + w.x, v.y + w.y, v.z + w.z };
-}
 
 /*the function returns constant 1 for z value(?) it's the distance between the camera and the projection plane.*/
 inline Vector3 CanvasToViewport(float x, float y, float canvasWidth, float canvasHeight ,float viewportWidth, float viewportHeight)
@@ -57,11 +55,11 @@ inline QuadraticEquationSolutions IntersectRaySphere(Vector3 O, Vector3 D, Spher
     Vector3 C = sphere.center;
     float r = sphere.radius;
 
-    Vector3 CO = SubstractV2FromV1(O, C);  // O - C (not C - O)
+    Vector3 CO = O - C;  // O - C (not C - O)
 
-    float a = DotProduct(D, D);
-    float b = 2 * DotProduct(CO, D);
-    float c = DotProduct(CO, CO) - r * r;
+    float a = D * D;
+    float b = 2 * (CO * D);
+    float c = (CO * CO) - r * r;
 
     float discriminant = b * b - 4 * a * c;
     if (discriminant < 0)
