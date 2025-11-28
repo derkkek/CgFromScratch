@@ -4,37 +4,15 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include "MathUtils.hpp"
 
 // width / height of window / buffer
 int WIDTH = 800;
 int HEIGHT = 600;
-struct Vector3
-{
-    float x;
-    float y;
-    float z;
-};
-float Length(Vector3 v)
-{
-    return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
-}
 
-float DotProduct(Vector3 v, Vector3 w)
-{
-    return (v.x * w.x + v.y * w.y + v.z * w.z);
-}
-Vector3 SubstractV2FromV1(Vector3 v, Vector3 w)
-{
-    return(Vector3{ v.x - w.x, v.y - w.y, v.z - w.z });
-}
-Vector3 MultiplyVectorByScalar(Vector3 v, float s)
-{
-    return Vector3{ s * v.x, s * v.y, s * v.z };
-}
-Vector3 SumTwoVectors(Vector3 v, Vector3 w)
-{
-    return Vector3{ v.x + w.x, v.y + w.y, v.z + w.z };
-}
+Vector3 C{};
+float radius = 20.0f;
+
 
 void PutPixel(SDL_Surface* surface, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     SDL_WriteSurfacePixel(surface, WIDTH/2 + x, HEIGHT/2 - y, r, g, b, a);
@@ -67,8 +45,18 @@ int main(int argc, char* argv[]) {
     bool running = true;
     SDL_Event event;
 
-    Vector3 O{};
-    Vector3 positionOnRay = SumTwoVectors(O, MultiplyVectorByScalar((SubstractV2FromV1(Vector3{ 50,50,0 }, O)),5));
+    Vector3 O{0, 0, -2};
+    float viewportWidth = 1.0f;
+    float viewportHeight = 1.0f;
+
+    Sphere sphere0{ Vector3(0, -1, 3) , 1, Vector3(255, 0, 0) };
+
+    Sphere sphere1{ Vector3(2, 0, 4) , 1, Vector3(0, 0, 255) };
+    Sphere sphere2{ Vector3(-2, 0, 4) , 1, Vector3(0, 255, 0) };
+    std::vector<Sphere> spheres;
+    spheres.push_back(sphere0);
+    spheres.push_back(sphere1);
+    spheres.push_back(sphere2);
 
     while (running) {
         while (SDL_PollEvent(&event)) {
@@ -82,9 +70,15 @@ int main(int argc, char* argv[]) {
 				HEIGHT = surface->h;
             }
         }
-
-		PutPixel(surface, positionOnRay.x, positionOnRay.y, 0, 255, 0, 255); 
-
+        for (int y = -HEIGHT/2; y < HEIGHT / 2; ++y)
+        {
+            for (int x = -WIDTH / 2; x < WIDTH / 2; ++x)
+            {
+                Vector3 D = CanvasToViewport(x, y, WIDTH, HEIGHT, viewportWidth, viewportHeight);
+                Vector3 color = TraceRay(O, D, 1, INFINITY, spheres);
+                PutPixel(surface, x, y-1, color.x, color.y, color.z, 255);
+            }
+        }
         // Then update the window to show surface
         SDL_UpdateWindowSurface(window);
     }
