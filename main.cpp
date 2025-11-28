@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <iostream>
 #include "MathUtils.hpp"
+#include "GraphicsUtils.hpp"
 
 // width / height of window / buffer
 int WIDTH = 800;
@@ -12,11 +13,6 @@ int HEIGHT = 600;
 
 Vector3 C{};
 float radius = 20.0f;
-
-
-void PutPixel(SDL_Surface* surface, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    SDL_WriteSurfacePixel(surface, WIDTH/2 + x, HEIGHT/2 - y, r, g, b, a);
-}
 
 int main(int argc, char* argv[]) {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -70,15 +66,16 @@ int main(int argc, char* argv[]) {
 				HEIGHT = surface->h;
             }
         }
-        for (int y = -HEIGHT/2; y < HEIGHT / 2; ++y)
-        {
-            for (int x = -WIDTH / 2; x < WIDTH / 2; ++x)
-            {
-                Vector3 D = CanvasToViewport(x, y, WIDTH, HEIGHT, viewportWidth, viewportHeight);
-                Vector3 color = TraceRay(O, D, 1, INFINITY, spheres);
-                PutPixel(surface, x, y-1, color.x, color.y, color.z, 255);
-            }
-        }
+        //for (int y = -HEIGHT/2; y < HEIGHT / 2; ++y)
+        //{
+        //    for (int x = -WIDTH / 2; x < WIDTH / 2; ++x)
+        //    {
+
+        //    }
+        //}
+        
+        RenderLine(surface, WIDTH, HEIGHT, O, Vector3{ 50, 100, 0 }, Vector3{ 255, 0, 0 });
+
         // Then update the window to show surface
         SDL_UpdateWindowSurface(window);
     }

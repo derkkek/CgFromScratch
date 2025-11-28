@@ -8,11 +8,21 @@ struct Vector3
     float y;
     float z;
 };
+struct Vector2
+{
+    float x;
+    float y;
+};
 
 struct Sphere
 {
     Vector3 center;
     float radius;
+    Vector3 color;
+};
+struct Line
+{
+    std::vector<Vector3> points;
     Vector3 color;
 };
 
@@ -44,6 +54,23 @@ inline Vector3 MultiplyVectorByScalar(Vector3 v, float s)
     return Vector3{ s * v.x, s * v.y, s * v.z };
 }
 
+inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
+{
+    Line line{};
+    float a = (P1.y - P0.y) / (P1.x - P0.x);
+    float b = P0.y - a * P0.x;
+    float endX = P1.x - P0.x;
+
+    for (float x = P0.x; x <= endX; x++)
+    {
+        line.points.push_back({ x, a * x + b });
+    }
+
+    line.color = color;
+
+    return line;
+
+}
 
 /*the function returns constant 1 for z value(?) it's the distance between the camera and the projection plane.*/
 inline Vector3 CanvasToViewport(float x, float y, float canvasWidth, float canvasHeight ,float viewportWidth, float viewportHeight)
