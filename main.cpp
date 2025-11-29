@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     bool running = true;
     SDL_Event event;
 
-    Vector3 O{0, 0, -2};
+    Vector3 O{0, 0, 0};
     float viewportWidth = 1.0f;
     float viewportHeight = 1.0f;
 
@@ -66,15 +66,8 @@ int main(int argc, char* argv[]) {
 				HEIGHT = surface->h;
             }
         }
-        //for (int y = -HEIGHT/2; y < HEIGHT / 2; ++y)
-        //{
-        //    for (int x = -WIDTH / 2; x < WIDTH / 2; ++x)
-        //    {
-
-        //    }
-        //}
         
-        RenderLine(surface, WIDTH, HEIGHT, Vector3{ 50, 200, 0 },O, Vector3{ 255, 0, 0 });
+        RenderLine(surface, WIDTH, HEIGHT, Vector3{ 10, 200, 0 },O, Vector3{ 255, 0, 0 });
 
         // Then update the window to show surface
         SDL_UpdateWindowSurface(window);

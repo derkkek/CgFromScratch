@@ -5,6 +5,7 @@ inline void PutPixel(SDL_Surface* surface, float windowWidth,float windowHeight,
     SDL_WriteSurfacePixel(surface, windowWidth / 2 + x, windowHeight / 2 - y, r, g, b, a);
 }
 
+/*First constructs a line from start to end after that renders it on a sdl surface context.*/
 inline void RenderLine(SDL_Surface* surface, float windowWidth, float windowHeight, Vector3 start, Vector3 end, Vector3 color)
 {
     Line line = DrawLine(start, end, color);

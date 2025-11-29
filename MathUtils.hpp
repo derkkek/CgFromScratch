@@ -57,22 +57,52 @@ inline Vector3 MultiplyVectorByScalar(Vector3 v, float s)
 inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
 {
     Line line{};
-    if (P0.x > P1.x)
-    {
-        Vector3 holder;
+    float dx = P1.x - P0.x;
+    float dy = P1.y - P0.y;
 
-        holder = P1;
-        P1 = P0;
-        P0 = holder;
+    if (abs(dx) > abs(dy))
+    {
+        if (P0.x > P1.x)
+        {
+            Vector3 holder;
+
+            holder = P1;
+            P1 = P0;
+            P0 = holder;
+        }
+        float dx = P1.x - P0.x;
+        float dy = P1.y - P0.y;
+
+        float a = dy / dx;
+        float y = P0.y;
+
+        for (float x = P0.x; x <= dx; x++)
+        {
+            line.points.push_back({ x, y });
+            y = y + a;
+        }
     }
-    float a = (P1.y - P0.y) / (P1.x - P0.x);
-    float y = P0.y;
-    float endX = P1.x - P0.x;
-
-    for (float x = P0.x; x <= endX; x++)
+    else
     {
-        line.points.push_back({ x, y});
-        y = y + a;
+        if (P0.y > P1.y)
+        {
+            Vector3 holder;
+
+            holder = P1;
+            P1 = P0;
+            P0 = holder;
+        }
+        float dx = P1.x - P0.x;
+        float dy = P1.y - P0.y;
+
+        float a = dx / dy;
+        float x = P0.x;
+
+        for (float y = P0.y; y <= dy; y++)
+        {
+            line.points.push_back({ x, y });
+            x = x + a;
+        }
     }
 
     line.color = color;
