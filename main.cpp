@@ -7,73 +7,79 @@
 #include "MathUtils.hpp"
 #include "GraphicsUtils.hpp"
 
-// width / height of window / buffer
-int WIDTH = 800;
-int HEIGHT = 600;
 
-Vector3 C{};
-float radius = 20.0f;
-
-int main(int argc, char* argv[]) {
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n";
-        return 1;
-    }
-
-    SDL_Window* window = SDL_CreateWindow("SDL3 Soft-Pixel Test",
-        WIDTH, HEIGHT,
-        SDL_WINDOW_RESIZABLE);
-    if (!window) {
-        std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << "\n";
-        SDL_Quit();
-        return 1;
-    }
-
-    // Get the window surface (software buffer)
-    SDL_Surface* surface = SDL_GetWindowSurface(window);
-    if (!surface) {
-        std::cerr << "SDL_GetWindowSurface failed: " << SDL_GetError() << "\n";
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
+int main(int argc, char* argv[])
+{
+    RenderContext renderContext{ 0, 0, 800, 600, 1.0f, 1.0f };
+    InitSDL(renderContext);
 
     bool running = true;
     SDL_Event event;
 
-    Vector3 O{0, 0, 0};
-    float viewportWidth = 1.0f;
-    float viewportHeight = 1.0f;
+    // Front face vertices (z=5)
+    Vector3 vA = { -2.0f, -0.5f, 5.0f };
+    Vector3 vB = { -2.0f,  0.5f, 5.0f };
+    Vector3 vC = { -1.0f,  0.5f, 5.0f };
+    Vector3 vD = { -1.0f, -0.5f, 5.0f };
 
-    Sphere sphere0{ Vector3(0, -1, 3) , 1, Vector3(255, 0, 0) };
+    // Back face vertices (z=6)
+    Vector3 vAb = { -2.0f, -0.5f, 6.0f };
+    Vector3 vBb = { -2.0f,  0.5f, 6.0f };
+    Vector3 vCb = { -1.0f,  0.5f, 6.0f };
+    Vector3 vDb = { -1.0f, -0.5f, 6.0f };
 
-    Sphere sphere1{ Vector3(2, 0, 4) , 1, Vector3(0, 0, 255) };
-    Sphere sphere2{ Vector3(-2, 0, 4) , 1, Vector3(0, 255, 0) };
-    std::vector<Sphere> spheres;
-    spheres.push_back(sphere0);
-    spheres.push_back(sphere1);
-    spheres.push_back(sphere2);
-
-    while (running) {
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) {
+    while (running)
+    {
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_EVENT_QUIT)
+            {
                 running = false;
             }
             if (event.type == SDL_EVENT_WINDOW_RESIZED
-                || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-                surface = SDL_GetWindowSurface(window);  // Get updated surface
-				WIDTH = surface->w;
-				HEIGHT = surface->h;
+                || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+            {
+                // Recreate the RGBA surface with new dimensions
+                SDL_DestroySurface(renderContext.surface);
+                int w, h;
+                SDL_GetWindowSize(renderContext.window, &w, &h);
+                renderContext.windowWidth = w;
+                renderContext.windowHeight = h;
+                renderContext.surface = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_RGBA8888);
             }
         }
-        
-        RenderLine(surface, WIDTH, HEIGHT, Vector3{ 10, 200, 0 },O, Vector3{ 255, 0, 0 });
 
-        // Then update the window to show surface
-        SDL_UpdateWindowSurface(window);
+        // Clear the RGBA surface (e.g., to white with full opacity)
+        SDL_ClearSurface(renderContext.surface, 0, 0, 0, 255);
+
+        // Draw front face (BLUE) - z=5
+        RenderLine(renderContext, ProjectVertex(vA, renderContext), ProjectVertex(vB, renderContext), Color::Blue);
+        RenderLine(renderContext, ProjectVertex(vB, renderContext), ProjectVertex(vC, renderContext), Color::Blue);
+        RenderLine(renderContext, ProjectVertex(vC, renderContext), ProjectVertex(vD, renderContext), Color::Blue);
+        RenderLine(renderContext, ProjectVertex(vD, renderContext), ProjectVertex(vA, renderContext), Color::Blue);
+
+        // Draw back face (RED) - z=6
+        RenderLine(renderContext, ProjectVertex(vAb, renderContext), ProjectVertex(vBb, renderContext), Color::Red);
+        RenderLine(renderContext, ProjectVertex(vBb, renderContext), ProjectVertex(vCb, renderContext), Color::Red);
+        RenderLine(renderContext, ProjectVertex(vCb, renderContext), ProjectVertex(vDb, renderContext), Color::Red);
+        RenderLine(renderContext, ProjectVertex(vDb, renderContext), ProjectVertex(vAb, renderContext), Color::Red);
+
+        // Draw connecting edges (GREEN)
+        RenderLine(renderContext, ProjectVertex(vA, renderContext), ProjectVertex(vAb, renderContext), Color::Green);
+        RenderLine(renderContext, ProjectVertex(vB, renderContext), ProjectVertex(vBb, renderContext), Color::Green);
+        RenderLine(renderContext, ProjectVertex(vC, renderContext), ProjectVertex(vCb, renderContext), Color::Green);
+        RenderLine(renderContext, ProjectVertex(vD, renderContext), ProjectVertex(vDb, renderContext), Color::Green);
+
+        // CRITICAL: Blit your RGBA surface to the window surface
+        SDL_Surface* windowSurface = SDL_GetWindowSurface(renderContext.window);
+        SDL_BlitSurface(renderContext.surface, NULL, windowSurface, NULL);
+
+        // Now update the window
+        SDL_UpdateWindowSurface(renderContext.window);
     }
 
-    SDL_DestroyWindow(window);
+    SDL_DestroySurface(renderContext.surface);
+    SDL_DestroyWindow(renderContext.window);
     SDL_Quit();
     return 0;
 }

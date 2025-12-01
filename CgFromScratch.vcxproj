@@ -135,6 +135,9 @@
   <ItemGroup>
     <ClInclude Include="GraphicsUtils.hpp" />
   </ItemGroup>
+	<ItemGroup>
+		<ClInclude Include="MathUtils.hpp" />
+	</ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

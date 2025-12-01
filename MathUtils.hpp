@@ -2,6 +2,9 @@
 #include <corecrt_math.h>
 #include <vector>
 
+// Forward declaration to avoid circular dependency
+struct RenderContext;
+
 struct Vector3
 {
     float x;
@@ -22,7 +25,7 @@ struct Sphere
 };
 struct Line
 {
-    std::vector<Vector3> points;
+    std::vector<Vector2> points;
     Vector3 color;
 };
 
@@ -54,7 +57,7 @@ inline Vector3 MultiplyVectorByScalar(Vector3 v, float s)
     return Vector3{ s * v.x, s * v.y, s * v.z };
 }
 
-inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
+inline Line DrawLine(Vector2 P0, Vector2 P1, Vector3 color)
 {
     Line line{};
     float dx = P1.x - P0.x;
@@ -64,7 +67,7 @@ inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
     {
         if (P0.x > P1.x)
         {
-            Vector3 holder;
+            Vector2 holder;
 
             holder = P1;
             P1 = P0;
@@ -76,7 +79,7 @@ inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
         float a = dy / dx;
         float y = P0.y;
 
-        for (float x = P0.x; x <= dx; x++)
+        for (float x = P0.x; x <= P1.x; x++)
         {
             line.points.push_back({ x, y });
             y = y + a;
@@ -86,7 +89,7 @@ inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
     {
         if (P0.y > P1.y)
         {
-            Vector3 holder;
+            Vector2 holder;
 
             holder = P1;
             P1 = P0;
@@ -98,7 +101,7 @@ inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
         float a = dx / dy;
         float x = P0.x;
 
-        for (float y = P0.y; y <= dy; y++)
+        for (float y = P0.y; y <= P1.y; y++)
         {
             line.points.push_back({ x, y });
             x = x + a;
@@ -112,10 +115,11 @@ inline Line DrawLine(Vector3 P0, Vector3 P1, Vector3 color)
 }
 
 /*the function returns constant 1 for z value(?) it's the distance between the camera and the projection plane.*/
-inline Vector3 CanvasToViewport(float x, float y, float canvasWidth, float canvasHeight ,float viewportWidth, float viewportHeight)
+inline Vector3 CanvasToViewport(float x, float y, float canvasWidth, float canvasHeight, float viewportWidth, float viewportHeight)
 {
     return Vector3{ x * viewportWidth / canvasWidth, y * viewportHeight / canvasHeight, 1 };
 }
+
 inline QuadraticEquationSolutions IntersectRaySphere(Vector3 O, Vector3 D, Sphere sphere)
 {
     Vector3 C = sphere.center;
