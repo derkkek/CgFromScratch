@@ -16,21 +16,26 @@ int main(int argc, char* argv[])
     bool running = true;
     SDL_Event event;
 
-    std::vector<Vector3> verticesOfCube;
-    verticesOfCube.push_back(Vector3{ 1,1,1 });
-    verticesOfCube.push_back(Vector3{ -1,1,1 });
-    verticesOfCube.push_back(Vector3{ -1,-1,1 });
-    verticesOfCube.push_back(Vector3{ 1,-1,1 });
-    verticesOfCube.push_back(Vector3{ 1,1,-1 });
-    verticesOfCube.push_back(Vector3{ -1,1,-1 });
-    verticesOfCube.push_back(Vector3{ -1,-1,-1 });
-    verticesOfCube.push_back(Vector3{ 1,-1,-1 });
-    for (Vector3& vertex : verticesOfCube)
-    {
-        Vector3 translation = Vector3(-1.5, 0, 7);
-        vertex = vertex + translation;
-    }
-    std::vector<Triangle> triangles = ConstructTrianglesOfObjectMesh(verticesOfCube, renderContext);
+    Model cube;
+
+
+    cube.vertices.push_back(Vector3{ 1,1,1 });
+    cube.vertices.push_back(Vector3{ -1,1,1 });
+    cube.vertices.push_back(Vector3{ -1,-1,1 });
+    cube.vertices.push_back(Vector3{ 1,-1,1 });
+    cube.vertices.push_back(Vector3{ 1,1,-1 });
+    cube.vertices.push_back(Vector3{ -1,1,-1 });
+    cube.vertices.push_back(Vector3{ -1,-1,-1 });
+    cube.vertices.push_back(Vector3{ 1,-1,-1 });
+    //cube.triangles = ConstructTrianglesOfObjectMesh(cube.vertices, renderContext);
+
+    ModelInstance cube0(cube, Vector3(1.5, 0, 7));
+    TranslateObject(cube0, cube0.position);
+    cube0.model.triangles = ConstructTrianglesOfObjectMesh(cube0.model.vertices, renderContext);
+
+    ModelInstance cube1(cube, Vector3(-1.5, 0, 7));
+    TranslateObject(cube1, cube1.position);
+    cube1.model.triangles = ConstructTrianglesOfObjectMesh(cube1.model.vertices, renderContext);
 
     while (running)
     {
@@ -56,7 +61,8 @@ int main(int argc, char* argv[])
         // Clear the RGBA surface (e.g., to white with full opacity)
         SDL_ClearSurface(renderContext.surface, 0, 0, 0, 255);
 
-        RenderObject(triangles, renderContext);
+        RenderObject(cube0.model.triangles, renderContext);
+        RenderObject(cube1.model.triangles, renderContext);
 
         // CRITICAL: Blit your RGBA surface to the window surface
         SDL_Surface* windowSurface = SDL_GetWindowSurface(renderContext.window);

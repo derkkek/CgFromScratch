@@ -4,6 +4,7 @@
 #include <vector>
 #include "MathUtils.hpp"
 
+
 struct RenderContext
 {
     SDL_Window* window;
@@ -14,6 +15,24 @@ struct RenderContext
     float viewportHeight;
     float cameraToViewportDistance;
 };
+struct Triangle
+{
+    Vector2 v0;
+    Vector2 v1;
+    Vector2 v2;
+};
+
+struct Model
+{
+    std::string name;
+    std::vector<Vector3> vertices;
+    std::vector<Triangle> triangles;
+};
+struct ModelInstance
+{
+    Model model;
+    Vector3 position;
+};
 
 namespace Color
 {
@@ -22,12 +41,7 @@ namespace Color
     constexpr Vector3 Blue = { 0, 0, 255 };
     constexpr Vector3 Green = { 0, 255, 0 };
 }
-struct Triangle
-{
-    Vector2 v0;
-    Vector2 v1;
-    Vector2 v2;
-};
+
 inline Vector3 WorldToViewportProjection(Vector3 worldPosition, float cameraToViewportDistance)
 {
     float d = cameraToViewportDistance;
@@ -237,5 +251,13 @@ inline void RenderObject(std::vector<Triangle>& triangles, RenderContext context
     for (Triangle& triangle : triangles)
     {
         DrawWireframeTriangle(context, triangle.v0, triangle.v1, triangle.v2, Color::Blue);
+    }
+}
+inline void TranslateObject(ModelInstance& object, Vector3 translationVector)
+{
+    for (Vector3& vertex : object.model.vertices)
+    {
+        Vector3 translation = translationVector;
+        vertex = vertex + translation;
     }
 }
