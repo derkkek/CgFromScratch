@@ -17,9 +17,7 @@ struct RenderContext
 };
 struct Triangle
 {
-    Vector2 v0;
-    Vector2 v1;
-    Vector2 v2;
+    int v0, v1, v2;  // Indices into the vertices array
 };
 
 struct Model
@@ -222,37 +220,43 @@ inline void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Ve
         }
     }
 }
-inline std::vector<Triangle> ConstructTrianglesOfObjectMesh(std::vector<Vector3>& vertices, RenderContext context)
+Model CreateCube()
 {
-    std::vector<Vector2> screenSpaceProjectedVertices;
-    for (Vector3 vertex : vertices)
+    Model cube;
+    cube.vertices = 
     {
-        screenSpaceProjectedVertices.push_back(ViewPortToScreenProjection(WorldToViewportProjection(vertex, context.cameraToViewportDistance), context));
-    }
+        {1,1,1}, {-1,1,1}, {-1,-1,1}, {1,-1,1},
+        {1,1,-1}, {-1,1,-1}, {-1,-1,-1}, {1,-1,-1}
+    };
 
-    std::vector<Triangle> triangles;
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[0], screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[2] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[0], screenSpaceProjectedVertices[2], screenSpaceProjectedVertices[3] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[0], screenSpaceProjectedVertices[3] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[3], screenSpaceProjectedVertices[7] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[7] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[7], screenSpaceProjectedVertices[6] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[6] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[6], screenSpaceProjectedVertices[2] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[1] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[0] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[2], screenSpaceProjectedVertices[6], screenSpaceProjectedVertices[7] });
-    triangles.push_back(Triangle{ screenSpaceProjectedVertices[2], screenSpaceProjectedVertices[7], screenSpaceProjectedVertices[3] });
-    return triangles;
+    // Define topology using indices
+    cube.triangles = 
+    {
+        {0,1,2}, {0,2,3}, {4,0,3}, {4,3,7},
+        {5,4,7}, {5,7,6}, {1,5,6}, {1,6,2},
+        {4,5,1}, {4,1,0}, {2,6,7}, {2,7,3}
+    };
+
+    return cube;
+}
+void RenderModelInstance(const ModelInstance& instance, RenderContext context)
+{
+    for (const Triangle& tri : instance.model.triangles)
+    {
+        // Get world-space vertices
+        Vector3 v0 = instance.model.vertices[tri.v0] + instance.position;
+        Vector3 v1 = instance.model.vertices[tri.v1] + instance.position;
+        Vector3 v2 = instance.model.vertices[tri.v2] + instance.position;
+
+        // Project to screen space
+        Vector2 p0 = ProjectVertex(v0, context);
+        Vector2 p1 = ProjectVertex(v1, context);
+        Vector2 p2 = ProjectVertex(v2, context);
+
+        DrawWireframeTriangle(context, p0, p1, p2, Color::Blue);
+    }
 }
 
-inline void RenderObject(std::vector<Triangle>& triangles, RenderContext context)
-{
-    for (Triangle& triangle : triangles)
-    {
-        DrawWireframeTriangle(context, triangle.v0, triangle.v1, triangle.v2, Color::Blue);
-    }
-}
 inline void TranslateObject(ModelInstance& object, Vector3 translationVector)
 {
     for (Vector3& vertex : object.model.vertices)

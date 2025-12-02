@@ -16,26 +16,13 @@ int main(int argc, char* argv[])
     bool running = true;
     SDL_Event event;
 
-    Model cube;
+    // Create the model ONCE
+    Model cubeModel = CreateCube();
 
-
-    cube.vertices.push_back(Vector3{ 1,1,1 });
-    cube.vertices.push_back(Vector3{ -1,1,1 });
-    cube.vertices.push_back(Vector3{ -1,-1,1 });
-    cube.vertices.push_back(Vector3{ 1,-1,1 });
-    cube.vertices.push_back(Vector3{ 1,1,-1 });
-    cube.vertices.push_back(Vector3{ -1,1,-1 });
-    cube.vertices.push_back(Vector3{ -1,-1,-1 });
-    cube.vertices.push_back(Vector3{ 1,-1,-1 });
-    //cube.triangles = ConstructTrianglesOfObjectMesh(cube.vertices, renderContext);
-
-    ModelInstance cube0(cube, Vector3(1.5, 0, 7));
-    TranslateObject(cube0, cube0.position);
-    cube0.model.triangles = ConstructTrianglesOfObjectMesh(cube0.model.vertices, renderContext);
-
-    ModelInstance cube1(cube, Vector3(-1.5, 0, 7));
-    TranslateObject(cube1, cube1.position);
-    cube1.model.triangles = ConstructTrianglesOfObjectMesh(cube1.model.vertices, renderContext);
+    // Create multiple instances with different positions
+    ModelInstance cube0{ cubeModel, Vector3(1.5, 0, 7) };
+    ModelInstance cube1{ cubeModel, Vector3(-1.5, 0, 7) };
+    ModelInstance cube2{ cubeModel, Vector3(0, 2, 9) };
 
     while (running)
     {
@@ -60,9 +47,9 @@ int main(int argc, char* argv[])
 
         // Clear the RGBA surface (e.g., to white with full opacity)
         SDL_ClearSurface(renderContext.surface, 0, 0, 0, 255);
-
-        RenderObject(cube0.model.triangles, renderContext);
-        RenderObject(cube1.model.triangles, renderContext);
+        RenderModelInstance(cube0, renderContext);
+        RenderModelInstance(cube1, renderContext);
+        RenderModelInstance(cube2, renderContext);
 
         // CRITICAL: Blit your RGBA surface to the window surface
         SDL_Surface* windowSurface = SDL_GetWindowSurface(renderContext.window);
