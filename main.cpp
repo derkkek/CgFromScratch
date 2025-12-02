@@ -16,17 +16,21 @@ int main(int argc, char* argv[])
     bool running = true;
     SDL_Event event;
 
-    // Front face vertices (z=5)
-    Vector3 vA = { -2.0f, -0.5f, 5.0f };
-    Vector3 vB = { -2.0f,  0.5f, 5.0f };
-    Vector3 vC = { -1.0f,  0.5f, 5.0f };
-    Vector3 vD = { -1.0f, -0.5f, 5.0f };
-
-    // Back face vertices (z=6)
-    Vector3 vAb = { -2.0f, -0.5f, 6.0f };
-    Vector3 vBb = { -2.0f,  0.5f, 6.0f };
-    Vector3 vCb = { -1.0f,  0.5f, 6.0f };
-    Vector3 vDb = { -1.0f, -0.5f, 6.0f };
+    std::vector<Vector3> verticesOfCube;
+    verticesOfCube.push_back(Vector3{ 1,1,1 });
+    verticesOfCube.push_back(Vector3{ -1,1,1 });
+    verticesOfCube.push_back(Vector3{ -1,-1,1 });
+    verticesOfCube.push_back(Vector3{ 1,-1,1 });
+    verticesOfCube.push_back(Vector3{ 1,1,-1 });
+    verticesOfCube.push_back(Vector3{ -1,1,-1 });
+    verticesOfCube.push_back(Vector3{ -1,-1,-1 });
+    verticesOfCube.push_back(Vector3{ 1,-1,-1 });
+    for (Vector3& vertex : verticesOfCube)
+    {
+        Vector3 translation = Vector3(-1.5, 0, 7);
+        vertex = vertex + translation;
+    }
+    std::vector<Triangle> triangles = ConstructTrianglesOfObjectMesh(verticesOfCube, renderContext);
 
     while (running)
     {
@@ -52,23 +56,7 @@ int main(int argc, char* argv[])
         // Clear the RGBA surface (e.g., to white with full opacity)
         SDL_ClearSurface(renderContext.surface, 0, 0, 0, 255);
 
-        // Draw front face (BLUE) - z=5
-        RenderLine(renderContext, ProjectVertex(vA, renderContext), ProjectVertex(vB, renderContext), Color::Blue);
-        RenderLine(renderContext, ProjectVertex(vB, renderContext), ProjectVertex(vC, renderContext), Color::Blue);
-        RenderLine(renderContext, ProjectVertex(vC, renderContext), ProjectVertex(vD, renderContext), Color::Blue);
-        RenderLine(renderContext, ProjectVertex(vD, renderContext), ProjectVertex(vA, renderContext), Color::Blue);
-
-        // Draw back face (RED) - z=6
-        RenderLine(renderContext, ProjectVertex(vAb, renderContext), ProjectVertex(vBb, renderContext), Color::Red);
-        RenderLine(renderContext, ProjectVertex(vBb, renderContext), ProjectVertex(vCb, renderContext), Color::Red);
-        RenderLine(renderContext, ProjectVertex(vCb, renderContext), ProjectVertex(vDb, renderContext), Color::Red);
-        RenderLine(renderContext, ProjectVertex(vDb, renderContext), ProjectVertex(vAb, renderContext), Color::Red);
-
-        // Draw connecting edges (GREEN)
-        RenderLine(renderContext, ProjectVertex(vA, renderContext), ProjectVertex(vAb, renderContext), Color::Green);
-        RenderLine(renderContext, ProjectVertex(vB, renderContext), ProjectVertex(vBb, renderContext), Color::Green);
-        RenderLine(renderContext, ProjectVertex(vC, renderContext), ProjectVertex(vCb, renderContext), Color::Green);
-        RenderLine(renderContext, ProjectVertex(vD, renderContext), ProjectVertex(vDb, renderContext), Color::Green);
+        RenderObject(triangles, renderContext);
 
         // CRITICAL: Blit your RGBA surface to the window surface
         SDL_Surface* windowSurface = SDL_GetWindowSurface(renderContext.window);

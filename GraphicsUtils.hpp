@@ -12,6 +12,7 @@ struct RenderContext
     float windowHeight;
     float viewportWidth;
     float viewportHeight;
+    float cameraToViewportDistance;
 };
 
 namespace Color
@@ -21,6 +22,12 @@ namespace Color
     constexpr Vector3 Blue = { 0, 0, 255 };
     constexpr Vector3 Green = { 0, 255, 0 };
 }
+struct Triangle
+{
+    Vector2 v0;
+    Vector2 v1;
+    Vector2 v2;
+};
 inline Vector3 WorldToViewportProjection(Vector3 worldPosition, float cameraToViewportDistance)
 {
     float d = cameraToViewportDistance;
@@ -71,6 +78,7 @@ inline int InitSDL(RenderContext& renderContext)
     renderContext.surface = surface;
     renderContext.viewportHeight = 1.0f;
     renderContext.viewportHeight = 1.0f;
+    renderContext.cameraToViewportDistance = 1.0f;
     return 0;
 }
 inline void PutPixel(SDL_Surface* surface, float windowWidth,float windowHeight,int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -198,5 +206,36 @@ inline void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Ve
                 }
             }
         }
+    }
+}
+inline std::vector<Triangle> ConstructTrianglesOfObjectMesh(std::vector<Vector3>& vertices, RenderContext context)
+{
+    std::vector<Vector2> screenSpaceProjectedVertices;
+    for (Vector3 vertex : vertices)
+    {
+        screenSpaceProjectedVertices.push_back(ViewPortToScreenProjection(WorldToViewportProjection(vertex, context.cameraToViewportDistance), context));
+    }
+
+    std::vector<Triangle> triangles;
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[0], screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[2] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[0], screenSpaceProjectedVertices[2], screenSpaceProjectedVertices[3] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[0], screenSpaceProjectedVertices[3] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[3], screenSpaceProjectedVertices[7] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[7] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[7], screenSpaceProjectedVertices[6] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[6] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[6], screenSpaceProjectedVertices[2] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[5], screenSpaceProjectedVertices[1] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[4], screenSpaceProjectedVertices[1], screenSpaceProjectedVertices[0] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[2], screenSpaceProjectedVertices[6], screenSpaceProjectedVertices[7] });
+    triangles.push_back(Triangle{ screenSpaceProjectedVertices[2], screenSpaceProjectedVertices[7], screenSpaceProjectedVertices[3] });
+    return triangles;
+}
+
+inline void RenderObject(std::vector<Triangle>& triangles, RenderContext context)
+{
+    for (Triangle& triangle : triangles)
+    {
+        DrawWireframeTriangle(context, triangle.v0, triangle.v1, triangle.v2, Color::Blue);
     }
 }
