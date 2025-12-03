@@ -26,13 +26,12 @@ struct Model
     std::vector<Vector3> vertices;
     std::vector<Triangle> triangles;
 };
+
 struct ModelInstance
 {
     Model model;
     Vector3 position;
     float scale;
-    float rotationm;
-    Vector3 Translation;
 };
 
 namespace Color
@@ -247,9 +246,9 @@ void RenderModelInstance(ModelInstance& instance, RenderContext context)
     for (Triangle& tri : instance.model.triangles)
     {
         // Get world-space vertices
-        Vector3 v0 = instance.model.vertices[tri.v0] + instance.position;
-        Vector3 v1 = instance.model.vertices[tri.v1] + instance.position;
-        Vector3 v2 = instance.model.vertices[tri.v2] + instance.position;
+        Vector3 v0 = instance.model.vertices[tri.v0];
+        Vector3 v1 = instance.model.vertices[tri.v1];
+        Vector3 v2 = instance.model.vertices[tri.v2];
 
         // Project to screen space
         Vector2 p0 = ProjectVertex(v0, context);
@@ -260,11 +259,27 @@ void RenderModelInstance(ModelInstance& instance, RenderContext context)
     }
 }
 
-inline void TranslateObject(ModelInstance& object, Vector3 translationVector)
+inline void TranslateObject(ModelInstance& instance, Vector3 translationVector)
 {
-    for (Vector3& vertex : object.model.vertices)
+    for (Vector3& vertex : instance.model.vertices)
     {
         Vector3 translation = translationVector;
         vertex = vertex + translation;
+    }
+}
+inline void ScaleObject(ModelInstance& instance, float scale)
+{
+    instance.scale = scale;
+    for (Vector3& vertex : instance.model.vertices)
+    {
+        vertex = vertex * scale;
+    }
+}
+inline void RotateObject(ModelInstance& instance, Vector3 axis, float angle)
+{
+    float radian = angle * PI / 180;
+    for (Vector3& vertex : instance.model.vertices)
+    {
+        vertex = vertex * cos(radian) + (CrossProduct(axis, vertex)) * sin(radian) + axis * (axis * vertex) * (1 - cos(radian));
     }
 }

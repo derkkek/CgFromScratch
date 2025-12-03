@@ -20,9 +20,12 @@ int main(int argc, char* argv[])
     Model cubeModel = CreateCube();
 
     // Create multiple instances with different positions
-    ModelInstance cube0{ cubeModel, Vector3(1.5, 0, 7) };
+    ModelInstance cube0{ cubeModel, Vector3(1.5, 0, 7)};
     ModelInstance cube1{ cubeModel, Vector3(-1.5, 0, 7) };
     ModelInstance cube2{ cubeModel, Vector3(0, 2, 9) };
+    TranslateObject(cube0, cube0.position);
+    TranslateObject(cube1, cube1.position);
+    TranslateObject(cube2, cube2.position);
 
     while (running)
     {

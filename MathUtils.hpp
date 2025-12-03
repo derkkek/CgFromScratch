@@ -1,6 +1,8 @@
-#pragma once
+﻿#pragma once
 #include <corecrt_math.h>
 #include <vector>
+
+#define PI 3.14159265359 
 
 // Forward declaration to avoid circular dependency
 struct RenderContext;
@@ -46,6 +48,15 @@ inline Vector3 operator-(Vector3 v, Vector3 w)
 inline float operator*(Vector3 v, Vector3 w)
 {
     return (v.x * w.x + v.y * w.y + v.z * w.z);
+}
+inline Vector3 operator*(Vector3 v, float s)
+{
+    return { v.x * s, v.y * s, v.z * s };
+}
+inline Vector3 CrossProduct(Vector3 a, Vector3 b)
+{
+    //a × b = (a₂b₃ - a₃b₂, a₃b₁ - a₁b₃, a₁b₂ - a₂b₁)
+    return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
 }
 inline float Length(Vector3 v)
 {
@@ -167,4 +178,27 @@ inline Vector3 TraceRay(Vector3 O, Vector3 D, float t_min, float t_max, std::vec
         return Vector3(0, 0, 0);
     }
     return closestSphere->color;
+}
+float Sin(float x, int terms = 10)
+{
+    float result = 0;
+    int term = x;
+    for (int i = 0; i < terms; i++)
+    {
+        result += term;
+        term *= -x * x / ((2 * i + 2) * (2 * i + 3));
+    }
+    return result;
+}
+float Cos(float x, int terms = 10)
+{
+    float result = 1;
+    float term = 1;
+    for (int i = 0; i < terms; i++)
+    {
+        term *= -x * x / ((2 * i - 1) * (2 * i));
+        result += term;
+
+    }
+    return result;
 }
