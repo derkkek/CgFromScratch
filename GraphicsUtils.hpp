@@ -17,7 +17,7 @@ struct RenderContext
 };
 struct Triangle
 {
-    int v0, v1, v2;  // Indices into the vertices array
+    int v0, v1, v2;
 };
 
 struct Model
@@ -30,6 +30,9 @@ struct ModelInstance
 {
     Model model;
     Vector3 position;
+    float scale;
+    float rotationm;
+    Vector3 Translation;
 };
 
 namespace Color
@@ -239,9 +242,9 @@ Model CreateCube()
 
     return cube;
 }
-void RenderModelInstance(const ModelInstance& instance, RenderContext context)
+void RenderModelInstance(ModelInstance& instance, RenderContext context)
 {
-    for (const Triangle& tri : instance.model.triangles)
+    for (Triangle& tri : instance.model.triangles)
     {
         // Get world-space vertices
         Vector3 v0 = instance.model.vertices[tri.v0] + instance.position;
