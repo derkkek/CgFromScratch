@@ -1,58 +1,16 @@
-#pragma once
-#include <SDL3/SDL.h>
-#include <iostream>
-#include <vector>
-#include "MathUtils.hpp"
+#include "GraphicsUtils.h"
 
-
-struct RenderContext
-{
-    SDL_Window* window;
-    SDL_Surface* surface;
-    float windowWidth;
-    float windowHeight;
-    float viewportWidth;
-    float viewportHeight;
-    float cameraToViewportDistance;
-};
-struct Triangle
-{
-    int v0, v1, v2;
-};
-
-struct Model
-{
-    std::string name;
-    std::vector<Vector3> vertices;
-    std::vector<Triangle> triangles;
-};
-
-struct ModelInstance
-{
-    Model model;
-    Vector3 position;
-    float scale;
-};
-
-namespace Color
-{
-    constexpr Vector3 Red = { 255, 0, 0 };
-    constexpr Vector3 White = { 255, 255, 255 };
-    constexpr Vector3 Blue = { 0, 0, 255 };
-    constexpr Vector3 Green = { 0, 255, 0 };
-}
-
-inline Vector3 WorldToViewportProjection(Vector3 worldPosition, float cameraToViewportDistance)
+Vector3 WorldToViewportProjection(Vector3 worldPosition, float cameraToViewportDistance)
 {
     float d = cameraToViewportDistance;
     return Vector3{ worldPosition.x * d / worldPosition.z, worldPosition.y * d / worldPosition.z, d };
 }
-inline Vector2 ViewPortToScreenProjection(Vector3 viewportPos, RenderContext renderContext)
+Vector2 ViewPortToScreenProjection(Vector3 viewportPos, RenderContext renderContext)
 {
     return Vector2{ viewportPos.x * renderContext.windowWidth / renderContext.viewportWidth, viewportPos.y * renderContext.windowHeight / renderContext.viewportHeight };
 }
 
-inline Vector2 ProjectVertex(Vector3 vertex, RenderContext context)
+Vector2 ProjectVertex(Vector3 vertex, RenderContext context)
 {
     Vector3 worldPos = Vector3{ vertex.x, vertex.y, vertex.z };
     Vector3 viewPortPos = WorldToViewportProjection(worldPos, 1);
@@ -60,7 +18,7 @@ inline Vector2 ProjectVertex(Vector3 vertex, RenderContext context)
     return screenPos;
 }
 
-inline int InitSDL(RenderContext& renderContext)
+int InitSDL(RenderContext& renderContext)
 {
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n";
@@ -95,12 +53,12 @@ inline int InitSDL(RenderContext& renderContext)
     renderContext.cameraToViewportDistance = 1.0f;
     return 0;
 }
-inline void PutPixel(SDL_Surface* surface, float windowWidth,float windowHeight,int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+void PutPixel(SDL_Surface* surface, float windowWidth,float windowHeight,int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     SDL_WriteSurfacePixel(surface, windowWidth / 2 + x, windowHeight / 2 - y - 1, r, g, b, a);
 }
 
 /*First constructs a line from start to end after that renders it on a sdl surface context.*/
-inline void RenderLine(RenderContext context, Vector2 start, Vector2 end, Vector3 color)
+void RenderLine(RenderContext context, Vector2 start, Vector2 end, Vector3 color)
 {
     Line line = DrawLine(start, end, color);
 
@@ -110,7 +68,7 @@ inline void RenderLine(RenderContext context, Vector2 start, Vector2 end, Vector
     }
 }
 
-inline void DrawWireframeTriangle(RenderContext context, Vector2 P0, Vector2 P1, Vector2 P2, Vector3 color)
+void DrawWireframeTriangle(RenderContext context, Vector2 P0, Vector2 P1, Vector2 P2, Vector3 color)
 {
     RenderLine(context, P0, P1, color);
     RenderLine(context, P1, P2, color);
@@ -135,7 +93,7 @@ std::vector<float> Interpolate(float i0, float d0, float i1, float d1)
     return values;
 }
 
-inline void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color)
+void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color)
 {
     // Step 1: Sort the points so that y0 <= y1 <= y2
     if (P1.y < P0.y) {
@@ -259,7 +217,7 @@ void RenderModelInstance(ModelInstance& instance, RenderContext context)
     }
 }
 
-inline void TranslateObject(ModelInstance& instance, Vector3 translationVector)
+void TranslateObject(ModelInstance& instance, Vector3 translationVector)
 {
     for (Vector3& vertex : instance.model.vertices)
     {
@@ -267,7 +225,7 @@ inline void TranslateObject(ModelInstance& instance, Vector3 translationVector)
         vertex = vertex + translation;
     }
 }
-inline void ScaleObject(ModelInstance& instance, float scale)
+void ScaleObject(ModelInstance& instance, float scale)
 {
     instance.scale = scale;
     for (Vector3& vertex : instance.model.vertices)
@@ -275,7 +233,7 @@ inline void ScaleObject(ModelInstance& instance, float scale)
         vertex = vertex * scale;
     }
 }
-inline void RotateObject(ModelInstance& instance, Vector3 axis, float angle)
+void RotateObject(ModelInstance& instance, Vector3 axis, float angle)
 {
     float radian = angle * PI / 180;
     for (Vector3& vertex : instance.model.vertices)

@@ -20,7 +20,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GraphicsUtils.hpp">
+    <ClInclude Include="GraphicsUtils.cpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MathUtils.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

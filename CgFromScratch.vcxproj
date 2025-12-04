@@ -129,14 +129,14 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="GraphicsUtils.hpp" />
-  </ItemGroup>
 	<ItemGroup>
-		<ClInclude Include="MathUtils.hpp" />
+		<ClCompile Include="main.cpp" />
+		<ClCompile Include="GraphicsUtils.cpp" />
+		<ClCompile Include="MathUtils.cpp" />
+	</ItemGroup>
+	<ItemGroup>
+		<ClInclude Include="GraphicsUtils.h" />
+		<ClInclude Include="MathUtils.h" />
 	</ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

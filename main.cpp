@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
-#include "MathUtils.hpp"
-#include "GraphicsUtils.hpp"
+#include "MathUtils.h"
+#include "GraphicsUtils.h"
 
 
 int main(int argc, char* argv[])
