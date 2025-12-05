@@ -199,45 +199,66 @@ Model CreateCube()
 
     return cube;
 }
-void RenderModelInstance(ModelInstance& instance, RenderContext context)
+void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext context)
 {
-    for (Triangle& tri : instance.model.triangles)
+    // Compute transforms ONCE per instance
+    Mat4x4 cameraMatrix = ComputeCameraMatrix(camera);
+    Mat4x4 finalTransform = MultiplyMat4x4(cameraMatrix, instance.transform);
+    
+    // Transform all vertices (without modifying original model data)
+    std::vector<Vector2> projected;
+    for (const Vector3& vertex : instance.model.vertices)
     {
-        // Get world-space vertices
-        Vector3 v0 = instance.model.vertices[tri.v0];
-        Vector3 v1 = instance.model.vertices[tri.v1];
-        Vector3 v2 = instance.model.vertices[tri.v2];
-
+        // Transform vertex from model space to camera space
+        Vector3 transformed = MultiplyMat4x4ByVector3(finalTransform, vertex);
+        
         // Project to screen space
-        Vector2 p0 = ProjectVertex(v0, context);
-        Vector2 p1 = ProjectVertex(v1, context);
-        Vector2 p2 = ProjectVertex(v2, context);
-
-        DrawWireframeTriangle(context, p0, p1, p2, Color::Blue);
+        Vector2 screenPos = ProjectVertex(transformed, context);
+        projected.push_back(screenPos);
+    }
+    
+    // Draw triangles using projected vertices
+    for (const Triangle& tri : instance.model.triangles)
+    {
+        DrawWireframeTriangle(context,
+            projected[tri.v0],
+            projected[tri.v1],
+            projected[tri.v2],
+            Color::Blue);
     }
 }
 
-void TranslateObject(ModelInstance& instance, Vector3 translationVector)
+// Old vertex transformation functions removed - now using matrix pipeline
+// These functions were incorrectly modifying the shared model vertices
+// The new system uses pre-computed transformation matrices instead
+void TranslateCamera(Camera& cam, Vector3 translation)
 {
-    for (Vector3& vertex : instance.model.vertices)
-    {
-        Vector3 translation = translationVector;
-        vertex = vertex + translation;
-    }
+    cam.position = cam.position + translation;
 }
-void ScaleObject(ModelInstance& instance, float scale)
+
+Mat4x4 ComputeInstanceTransform(const ModelInstance& instance)
 {
-    instance.scale = scale;
-    for (Vector3& vertex : instance.model.vertices)
-    {
-        vertex = vertex * scale;
-    }
+    // Build transformation from right to left: T × R × S
+    Mat4x4 S = MakeScale(instance.scale, instance.scale, instance.scale);
+    Mat4x4 R = instance.orientation;
+    Mat4x4 T = MakeTranslation(instance.position.x, instance.position.y, instance.position.z);
+    
+    // T × R × S (same order as JavaScript)
+    return MultiplyMat4x4(T, MultiplyMat4x4(R, S));
 }
-void RotateObject(ModelInstance& instance, Vector3 axis, float angle)
+
+Mat4x4 ComputeCameraMatrix(const Camera& camera)
 {
-    float radian = angle * PI / 180;
-    for (Vector3& vertex : instance.model.vertices)
-    {
-        vertex = vertex * cos(radian) + (CrossProduct(axis, vertex)) * sin(radian) + axis * (axis * vertex) * (1 - cos(radian));
-    }
+    // Inverse translation: move camera position to origin
+    Mat4x4 invTranslation = MakeTranslation(
+        -camera.position.x,
+        -camera.position.y,
+        -camera.position.z
+    );
+    
+    // Transpose = inverse for orthogonal rotation matrices
+    Mat4x4 invRotation = TransposeMat4x4(camera.orientation);
+    
+    // Camera matrix = R^T × T^-1
+    return MultiplyMat4x4(invRotation, invTranslation);
 }

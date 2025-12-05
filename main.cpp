@@ -15,17 +15,26 @@ int main(int argc, char* argv[])
 
     bool running = true;
     SDL_Event event;
+    
+    // Initialize camera with position and orientation (matching the JavaScript example)
+    Mat4x4 cameraOrientation = MakeRotationAboutY(-30);  // Rotate camera -30 degrees
+    Camera cam{ Vector3(-3, 1, 2), cameraOrientation };
 
-    // Create the model ONCE
+    // Create the model ONCE (shared by all instances)
     Model cubeModel = CreateCube();
 
-    // Create multiple instances with different positions
-    ModelInstance cube0{ cubeModel, Vector3(1.5, 0, 7)};
-    ModelInstance cube1{ cubeModel, Vector3(-1.5, 0, 7) };
-    ModelInstance cube2{ cubeModel, Vector3(0, 2, 9) };
-    TranslateObject(cube0, cube0.position);
-    TranslateObject(cube1, cube1.position);
-    TranslateObject(cube2, cube2.position);
+    // Create multiple instances with different positions, orientations, and scales
+    Mat4x4 identityMatrix = MakeIdentityMatrix();
+    Mat4x4 rotation195 = MakeRotationAboutY(195);
+    
+    ModelInstance cube0{ cubeModel, Vector3(-1.5, 0, 7), identityMatrix, 0.75f };
+    cube0.transform = ComputeInstanceTransform(cube0);
+    
+    ModelInstance cube1{ cubeModel, Vector3(1.25, 2.5, 7.5), rotation195, 1.0f };
+    cube1.transform = ComputeInstanceTransform(cube1);
+    
+    ModelInstance cube2{ cubeModel, Vector3(0, -1, 8), identityMatrix, 0.5f };
+    cube2.transform = ComputeInstanceTransform(cube2);
 
     while (running)
     {
@@ -50,9 +59,9 @@ int main(int argc, char* argv[])
 
         // Clear the RGBA surface (e.g., to white with full opacity)
         SDL_ClearSurface(renderContext.surface, 0, 0, 0, 255);
-        RenderModelInstance(cube0, renderContext);
-        RenderModelInstance(cube1, renderContext);
-        RenderModelInstance(cube2, renderContext);
+        RenderModelInstance(cube0, cam, renderContext);
+        RenderModelInstance(cube1, cam, renderContext);
+        RenderModelInstance(cube2, cam, renderContext);
 
         // CRITICAL: Blit your RGBA surface to the window surface
         SDL_Surface* windowSurface = SDL_GetWindowSurface(renderContext.window);

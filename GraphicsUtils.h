@@ -27,11 +27,19 @@ struct Model
     std::vector<Triangle> triangles;
 };
 
+struct Camera
+{
+    Vector3 position;
+    Mat4x4 orientation;
+};
+
 struct ModelInstance
 {
     Model model;
     Vector3 position;
+    Mat4x4 orientation;
     float scale;
+    Mat4x4 transform;
 };
 
 namespace Color
@@ -64,10 +72,12 @@ void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Vector3 P
 
 Model CreateCube();
 
-void RenderModelInstance(ModelInstance& instance, RenderContext context);
+void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext context);
 
-void TranslateObject(ModelInstance& instance, Vector3 translationVector);
+// Camera helper function
+void TranslateCamera(Camera& cam, Vector3 translation);
 
-void ScaleObject(ModelInstance& instance, float scale);
+// Matrix-based transformation functions
+Mat4x4 ComputeInstanceTransform(const ModelInstance& instance);
 
-void RotateObject(ModelInstance& instance, Vector3 axis, float angle);
+Mat4x4 ComputeCameraMatrix(const Camera& camera);
