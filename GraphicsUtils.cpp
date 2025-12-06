@@ -199,6 +199,33 @@ Model CreateCube()
 
     return cube;
 }
+
+Mat4x4 ComputeInstanceTransform(const ModelInstance& instance)
+{
+    // Build transformation from right to left: T × R × S
+    Mat4x4 S = MakeScale(instance.scale, instance.scale, instance.scale);
+    Mat4x4 R = instance.orientation;
+    Mat4x4 T = MakeTranslation(instance.position.x, instance.position.y, instance.position.z);
+    
+    return MultiplyMat4x4(T, MultiplyMat4x4(R, S));
+}
+
+Mat4x4 ComputeCameraMatrix(const Camera& camera)
+{
+    // Inverse translation: move camera position to origin
+    Mat4x4 invTranslation = MakeTranslation(
+        -camera.position.x,
+        -camera.position.y,
+        -camera.position.z
+    );
+
+    // Transpose = inverse for orthogonal rotation matrices
+    Mat4x4 invRotation = TransposeMat4x4(camera.orientation);
+
+    // Camera matrix = R^T × T^-1
+    return MultiplyMat4x4(invRotation, invTranslation);
+}
+
 void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext context)
 {
     // Compute transforms ONCE per instance
@@ -236,29 +263,3 @@ void TranslateCamera(Camera& cam, Vector3 translation)
     cam.position = cam.position + translation;
 }
 
-Mat4x4 ComputeInstanceTransform(const ModelInstance& instance)
-{
-    // Build transformation from right to left: T × R × S
-    Mat4x4 S = MakeScale(instance.scale, instance.scale, instance.scale);
-    Mat4x4 R = instance.orientation;
-    Mat4x4 T = MakeTranslation(instance.position.x, instance.position.y, instance.position.z);
-    
-    // T × R × S (same order as JavaScript)
-    return MultiplyMat4x4(T, MultiplyMat4x4(R, S));
-}
-
-Mat4x4 ComputeCameraMatrix(const Camera& camera)
-{
-    // Inverse translation: move camera position to origin
-    Mat4x4 invTranslation = MakeTranslation(
-        -camera.position.x,
-        -camera.position.y,
-        -camera.position.z
-    );
-    
-    // Transpose = inverse for orthogonal rotation matrices
-    Mat4x4 invRotation = TransposeMat4x4(camera.orientation);
-    
-    // Camera matrix = R^T × T^-1
-    return MultiplyMat4x4(invRotation, invTranslation);
-}
