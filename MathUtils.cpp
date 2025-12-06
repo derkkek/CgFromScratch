@@ -235,6 +235,16 @@ Vector3 MultiplyMat4x4ByVector3(const Mat4x4& M, const Vector3& v)
     return Vector3{ x, y, z };
 }
 
+Vector4 MultiplyMat4x4ByVector4(const Mat4x4& M, const Vector4& v)
+{
+    float x = M.cells[0][0] * v.x + M.cells[0][1] * v.y + M.cells[0][2] * v.z + M.cells[0][3] * v.w;
+    float y = M.cells[1][0] * v.x + M.cells[1][1] * v.y + M.cells[1][2] * v.z + M.cells[1][3] * v.w;
+    float z = M.cells[2][0] * v.x + M.cells[2][1] * v.y + M.cells[2][2] * v.z + M.cells[2][3] * v.w;
+    float w = M.cells[3][0] * v.x + M.cells[3][1] * v.y + M.cells[3][2] * v.z + M.cells[3][3] * v.w;
+    
+    return Vector4{ x, y, z, w };
+}
+
 Mat4x4 TransposeMat4x4(const Mat4x4& M)
 {
     Mat4x4 result = {};

@@ -25,12 +25,21 @@ struct Model
     std::string name;
     std::vector<Vector3> vertices;
     std::vector<Triangle> triangles;
+    Vector3 bounds_center;
+    float bounds_radius;
+};
+
+struct Plane
+{
+    Vector3 normal;
+    float distance;
 };
 
 struct Camera
 {
     Vector3 position;
     Mat4x4 orientation;
+    std::vector<Plane> clipping_planes;
 };
 
 struct ModelInstance
@@ -81,3 +90,8 @@ void TranslateCamera(Camera& cam, Vector3 translation);
 Mat4x4 ComputeInstanceTransform(const ModelInstance& instance);
 
 Mat4x4 ComputeCameraMatrix(const Camera& camera);
+
+// Clipping functions
+void ClipTriangle(const Triangle& triangle, const Plane& plane, std::vector<Triangle>& triangles, std::vector<Vector3>& vertices);
+
+Model* TransformAndClip(const std::vector<Plane>& clipping_planes, const Model& model, float scale, const Mat4x4& transform);

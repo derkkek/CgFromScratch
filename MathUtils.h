@@ -18,6 +18,13 @@ struct Vector2
     float x;
     float y;
 };
+struct Vector4
+{
+    float x;
+    float y;
+    float z;
+    float w;
+};
 struct Mat4x4
 {
     float cells[4][4];
@@ -63,6 +70,10 @@ inline Vector3 operator*(Vector3 v, float s)
 {
     return { v.x * s, v.y * s, v.z * s };
 }
+inline Vector3 operator/(Vector3 v, float s)
+{
+    return { v.x / s, v.y / s, v.z / s };
+}
 Vector3 CrossProduct(Vector3 a, Vector3 b);
 
 float Length(Vector3 v);
@@ -92,6 +103,8 @@ Mat4x4 MakeRotationAboutZ(float angle);
 Mat4x4 MultiplyMat4x4(const Mat4x4& A, const Mat4x4& B);
 
 Vector3 MultiplyMat4x4ByVector3(const Mat4x4& M, const Vector3& v);
+
+Vector4 MultiplyMat4x4ByVector4(const Mat4x4& M, const Vector4& v);
 
 Mat4x4 TransposeMat4x4(const Mat4x4& M);
 

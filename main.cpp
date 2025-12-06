@@ -19,6 +19,16 @@ int main(int argc, char* argv[])
     // Initialize camera with position and orientation (matching the JavaScript example)
     Mat4x4 cameraOrientation = MakeRotationAboutY(-30);  // Rotate camera -30 degrees
     Camera cam{ Vector3(-3, 1, 2), cameraOrientation };
+    
+    // Set up clipping planes (matching the JavaScript example)
+    float s2 = 1.0f / sqrtf(2.0f);
+    cam.clipping_planes = {
+        Plane{Vector3{  0,   0,  1}, -1},  // Near
+        Plane{Vector3{ s2,   0, s2},  0},  // Left
+        Plane{Vector3{-s2,   0, s2},  0},  // Right
+        Plane{Vector3{  0, -s2, s2},  0},  // Top
+        Plane{Vector3{  0,  s2, s2},  0},  // Bottom
+    };
 
     // Create the model ONCE (shared by all instances)
     Model cubeModel = CreateCube();
@@ -33,7 +43,8 @@ int main(int argc, char* argv[])
     ModelInstance cube1{ cubeModel, Vector3(1.25, 2.5, 7.5), rotation195, 1.0f };
     cube1.transform = ComputeInstanceTransform(cube1);
     
-    ModelInstance cube2{ cubeModel, Vector3(0, -1, 8), identityMatrix, 0.5f };
+    // This cube is behind the camera and should be clipped
+    ModelInstance cube2{ cubeModel, Vector3(0, 0, -10), rotation195, 1.0f };
     cube2.transform = ComputeInstanceTransform(cube2);
 
     while (running)

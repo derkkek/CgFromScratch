@@ -197,6 +197,10 @@ Model CreateCube()
         {4,5,1}, {4,1,0}, {2,6,7}, {2,7,3}
     };
 
+    // Set bounding sphere (center at origin, radius = sqrt(3) for unit cube)
+    cube.bounds_center = Vector3{0, 0, 0};
+    cube.bounds_radius = sqrtf(3.0f);
+
     return cube;
 }
 
@@ -232,20 +236,25 @@ void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext 
     Mat4x4 cameraMatrix = ComputeCameraMatrix(camera);
     Mat4x4 finalTransform = MultiplyMat4x4(cameraMatrix, instance.transform);
     
-    // Transform all vertices (without modifying original model data)
+    // Transform and clip the model
+    Model* clipped = TransformAndClip(camera.clipping_planes, instance.model, instance.scale, finalTransform);
+    
+    if (clipped == nullptr) {
+        // Model was completely clipped out
+        return;
+    }
+    
+    // Project all vertices from the clipped model
     std::vector<Vector2> projected;
-    for (const Vector3& vertex : instance.model.vertices)
+    for (const Vector3& vertex : clipped->vertices)
     {
-        // Transform vertex from model space to camera space
-        Vector3 transformed = MultiplyMat4x4ByVector3(finalTransform, vertex);
-        
-        // Project to screen space
-        Vector2 screenPos = ProjectVertex(transformed, context);
+        // Vertex is already in camera space, just project to screen
+        Vector2 screenPos = ProjectVertex(vertex, context);
         projected.push_back(screenPos);
     }
     
     // Draw triangles using projected vertices
-    for (const Triangle& tri : instance.model.triangles)
+    for (const Triangle& tri : clipped->triangles)
     {
         DrawWireframeTriangle(context,
             projected[tri.v0],
@@ -253,6 +262,9 @@ void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext 
             projected[tri.v2],
             Color::Blue);
     }
+    
+    // Clean up the clipped model
+    delete clipped;
 }
 
 // Old vertex transformation functions removed - now using matrix pipeline
@@ -261,5 +273,162 @@ void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext 
 void TranslateCamera(Camera& cam, Vector3 translation)
 {
     cam.position = cam.position + translation;
+}
+
+// Computes the intersection of a segment and a plane
+// Returns the interpolation parameter t where intersection = v0 + t * (v1 - v0)
+float ComputeIntersection(const Vector3& v0, const Vector3& v1, const Plane& plane)
+{
+    float d0 = plane.normal * v0 + plane.distance;
+    float d1 = plane.normal * v1 + plane.distance;
+    float t = d0 / (d0 - d1);
+    return t;
+}
+
+// Clips a triangle against a plane. Adds output to triangles and vertices.
+void ClipTriangle(const Triangle& triangle, const Plane& plane, 
+                  std::vector<Triangle>& triangles, std::vector<Vector3>& vertices)
+{
+    const Vector3& v0 = vertices[triangle.v0];
+    const Vector3& v1 = vertices[triangle.v1];
+    const Vector3& v2 = vertices[triangle.v2];
+
+    // Check which vertices are in front of the plane (distance > 0 means inside)
+    bool in0 = (plane.normal * v0 + plane.distance) > 0;
+    bool in1 = (plane.normal * v1 + plane.distance) > 0;
+    bool in2 = (plane.normal * v2 + plane.distance) > 0;
+
+    int in_count = (in0 ? 1 : 0) + (in1 ? 1 : 0) + (in2 ? 1 : 0);
+
+    if (in_count == 0) {
+        // Nothing to do - the triangle is fully clipped out.
+        return;
+    } 
+    else if (in_count == 3) {
+        // The triangle is fully in front of the plane.
+        triangles.push_back(triangle);
+    } 
+    else if (in_count == 1) {
+        // The triangle has one vertex in. Output is one clipped triangle.
+        // Find which vertex is inside
+        int in_idx, out_idx1, out_idx2;
+        Vector3 in_vertex, out_vertex1, out_vertex2;
+        
+        if (in0) {
+            in_idx = triangle.v0; in_vertex = v0;
+            out_idx1 = triangle.v1; out_vertex1 = v1;
+            out_idx2 = triangle.v2; out_vertex2 = v2;
+        } else if (in1) {
+            in_idx = triangle.v1; in_vertex = v1;
+            out_idx1 = triangle.v0; out_vertex1 = v0;
+            out_idx2 = triangle.v2; out_vertex2 = v2;
+        } else {
+            in_idx = triangle.v2; in_vertex = v2;
+            out_idx1 = triangle.v0; out_vertex1 = v0;
+            out_idx2 = triangle.v1; out_vertex2 = v1;
+        }
+
+        // Compute intersection points
+        float t1 = ComputeIntersection(in_vertex, out_vertex1, plane);
+        float t2 = ComputeIntersection(in_vertex, out_vertex2, plane);
+
+        Vector3 new_v1 = in_vertex + (out_vertex1 - in_vertex) * t1;
+        Vector3 new_v2 = in_vertex + (out_vertex2 - in_vertex) * t2;
+
+        // Add new vertices
+        int new_idx1 = vertices.size();
+        vertices.push_back(new_v1);
+        int new_idx2 = vertices.size();
+        vertices.push_back(new_v2);
+
+        // Add clipped triangle
+        triangles.push_back(Triangle{in_idx, new_idx1, new_idx2});
+    } 
+    else if (in_count == 2) {
+        // The triangle has two vertices in. Output is two clipped triangles (a quad split into 2 triangles).
+        // Find which vertices are inside
+        int in_idx1, in_idx2, out_idx;
+        Vector3 in_vertex1, in_vertex2, out_vertex;
+        
+        if (!in0) {
+            out_idx = triangle.v0; out_vertex = v0;
+            in_idx1 = triangle.v1; in_vertex1 = v1;
+            in_idx2 = triangle.v2; in_vertex2 = v2;
+        } else if (!in1) {
+            out_idx = triangle.v1; out_vertex = v1;
+            in_idx1 = triangle.v0; in_vertex1 = v0;
+            in_idx2 = triangle.v2; in_vertex2 = v2;
+        } else {
+            out_idx = triangle.v2; out_vertex = v2;
+            in_idx1 = triangle.v0; in_vertex1 = v0;
+            in_idx2 = triangle.v1; in_vertex2 = v1;
+        }
+
+        // Compute intersection points
+        float t1 = ComputeIntersection(in_vertex1, out_vertex, plane);
+        float t2 = ComputeIntersection(in_vertex2, out_vertex, plane);
+
+        Vector3 new_v1 = in_vertex1 + (out_vertex - in_vertex1) * t1;
+        Vector3 new_v2 = in_vertex2 + (out_vertex - in_vertex2) * t2;
+
+        // Add new vertices
+        int new_idx1 = vertices.size();
+        vertices.push_back(new_v1);
+        int new_idx2 = vertices.size();
+        vertices.push_back(new_v2);
+
+        // Add two triangles forming a quad
+        triangles.push_back(Triangle{in_idx1, in_idx2, new_idx1});
+        triangles.push_back(Triangle{new_idx1, in_idx2, new_idx2});
+    }
+}
+
+// Transform and clip a model against clipping planes
+Model* TransformAndClip(const std::vector<Plane>& clipping_planes, 
+                        const Model& model, float scale, const Mat4x4& transform)
+{
+    // Transform the bounding sphere, and attempt early discard.
+    Vector4 center_homo = {model.bounds_center.x, model.bounds_center.y, model.bounds_center.z, 1.0f};
+    Vector4 center_transformed = MultiplyMat4x4ByVector4(transform, center_homo);
+    Vector3 center = {center_transformed.x / center_transformed.w, 
+                      center_transformed.y / center_transformed.w, 
+                      center_transformed.z / center_transformed.w};
+    
+    float radius = model.bounds_radius * scale;
+
+    // Early discard if bounding sphere is completely outside any plane
+    for (const Plane& plane : clipping_planes) {
+        float distance = plane.normal * center + plane.distance;
+        if (distance < -radius) {
+            return nullptr;  // Completely clipped
+        }
+    }
+
+    // Apply modelview transform to all vertices
+    std::vector<Vector3> vertices;
+    for (const Vector3& vertex : model.vertices) {
+        Vector3 transformed = MultiplyMat4x4ByVector3(transform, vertex);
+        vertices.push_back(transformed);
+    }
+
+    // Clip the entire model against each successive plane
+    std::vector<Triangle> triangles = model.triangles;  // Copy triangles
+    
+    for (const Plane& plane : clipping_planes) {
+        std::vector<Triangle> new_triangles;
+        for (const Triangle& tri : triangles) {
+            ClipTriangle(tri, plane, new_triangles, vertices);
+        }
+        triangles = new_triangles;
+    }
+
+    // Create and return the clipped model
+    Model* clipped = new Model();
+    clipped->vertices = vertices;
+    clipped->triangles = triangles;
+    clipped->bounds_center = center;
+    clipped->bounds_radius = radius;
+    
+    return clipped;
 }
 
