@@ -51,6 +51,9 @@ int InitSDL(RenderContext& renderContext)
     renderContext.viewportHeight = 1.0f;
     renderContext.viewportHeight = 1.0f;
     renderContext.cameraToViewportDistance = 1.0f;
+    // Initialize depth buffer to 0 since we're using inverse z (1/z)
+    // Larger 1/z = closer, so we start with the smallest value (0)
+    renderContext.depthBuffer = std::vector<float>(renderContext.windowWidth * renderContext.windowHeight, 0.0f);
     return 0;
 }
 void PutPixel(SDL_Surface* surface, float windowWidth,float windowHeight,int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -93,7 +96,7 @@ std::vector<float> Interpolate(float i0, float d0, float i1, float d1)
     return values;
 }
 
-void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color)
+void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color)
 {
     // Step 1: Sort the points so that y0 <= y1 <= y2
     if (P1.y < P0.y) {
@@ -112,44 +115,54 @@ void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Vector3 P
         P1 = temp;
     }
 
-    // Step 2: Compute the x coordinates and h values of the triangle edges
+    // Step 2: Convert z values to inverse z (1/z) for perspective-correct depth interpolation
+    // Skip triangles with invalid depth values (z <= 0 means behind camera, should be clipped)
+    if (P0.z <= 0.0f || P1.z <= 0.0f || P2.z <= 0.0f) {
+        return;  // Skip triangles behind the camera
+    }
+
+    float inv_z0 = 1.0f / P0.z;
+    float inv_z1 = 1.0f / P1.z;
+    float inv_z2 = 1.0f / P2.z;
+
+    // Step 3: Compute the x coordinates and inverse z values of the triangle edges
     std::vector<float> x01 = Interpolate(P0.y, P0.x, P1.y, P1.x);
-    std::vector<float> h01 = Interpolate(P0.y, P0.z, P1.y, P1.z);
+    std::vector<float> inv_z01 = Interpolate(P0.y, inv_z0, P1.y, inv_z1);
 
     std::vector<float> x12 = Interpolate(P1.y, P1.x, P2.y, P2.x);
-    std::vector<float> h12 = Interpolate(P1.y, P1.z, P2.y, P2.z);
+    std::vector<float> inv_z12 = Interpolate(P1.y, inv_z1, P2.y, inv_z2);
 
     std::vector<float> x02 = Interpolate(P0.y, P0.x, P2.y, P2.x);
-    std::vector<float> h02 = Interpolate(P0.y, P0.z, P2.y, P2.z);
+    std::vector<float> inv_z02 = Interpolate(P0.y, inv_z0, P2.y, inv_z2);
 
-    // Step 3: Concatenate the short sides
+    // Step 4: Concatenate the short sides
     x01.pop_back();
     std::vector<float> x012 = x01;
     x012.insert(x012.end(), x12.begin(), x12.end());
 
-    h01.pop_back();
-    std::vector<float> h012 = h01;
-    h012.insert(h012.end(), h12.begin(), h12.end());
+    inv_z01.pop_back();
+    std::vector<float> inv_z012 = inv_z01;
+    inv_z012.insert(inv_z012.end(), inv_z12.begin(), inv_z12.end());
 
-    // Step 4: Determine which is left and which is right
+    // Step 5: Determine which is left and which is right
     int m = x012.size() / 2;
-    std::vector<float> x_left, x_right, h_left, h_right;
+    std::vector<float> x_left, x_right, inv_z_left, inv_z_right;
 
     if (x02[m] < x012[m])
     {
         x_left = x02;
-        h_left = h02;
+        inv_z_left = inv_z02;
         x_right = x012;
-        h_right = h012;
+        inv_z_right = inv_z012;
     }
     else {
         x_left = x012;
-        h_left = h012;
+        inv_z_left = inv_z012;
         x_right = x02;
-        h_right = h02;
+        inv_z_right = inv_z02;
     }
 
-    // Step 5: Draw the horizontal segments
+    // Step 6: Draw the horizontal segments
     for (int y = P0.y; y <= P2.y; y++)
     {
         int index = y - (int)P0.y;
@@ -159,22 +172,44 @@ void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Vector3 P
             int xl = (int)x_left[index];
             int xr = (int)x_right[index];
 
-            // Interpolate h values across this scanline
-            std::vector<float> h_segment = Interpolate(xl, h_left[index], xr, h_right[index]);
+            // Interpolate inverse z values across this scanline
+            std::vector<float> inv_z_segment = Interpolate(xl, inv_z_left[index], xr, inv_z_right[index]);
 
             for (int x = xl; x <= xr; x++)
             {
                 int x_index = x - xl;  // Convert to 0-based index
 
-                if (x_index >= 0 && x_index < h_segment.size()) {
-                    float h = h_segment[x_index];
+                if (x_index >= 0 && x_index < inv_z_segment.size()) 
+                {
+                    float inv_z = inv_z_segment[x_index];  // This is the interpolated inverse depth value
 
-                    uint8_t r = (uint8_t)(color.x * h);
-                    uint8_t g = (uint8_t)(color.y * h);
-                    uint8_t b = (uint8_t)(color.z * h);
+                    // Calculate depth buffer index
+                    int screen_x = (int)context.windowWidth / 2 + x;
+                    int screen_y = (int)context.windowHeight / 2 - y - 1;
+                    int depthIndex = screen_y * (int)context.windowWidth + screen_x;
+                    
+                    // Bounds check for depth buffer
+                    if (screen_x >= 0 && screen_x < (int)context.windowWidth && 
+                        screen_y >= 0 && screen_y < (int)context.windowHeight &&
+                        depthIndex >= 0 && depthIndex < (int)context.depthBuffer.size()) 
+                    {
+                        // Depth test: only draw if this pixel is closer (larger 1/z = closer)
+                        // Since depth buffer is initialized to 0.0f, any positive inv_z will be closer
+                        if (inv_z > context.depthBuffer[depthIndex]) 
+                        {
+                            // For color, we can use the original z value (1/inv_z) or just use the color directly
+                            float z = 1.0f / inv_z;
+                            uint8_t r = (uint8_t)(color.x);
+                            uint8_t g = (uint8_t)(color.y);
+                            uint8_t b = (uint8_t)(color.z);
 
-                    PutPixel(context.surface, context.windowWidth, context.windowHeight,
-                        x, y, r, g, b, 255);
+                            PutPixel(context.surface, context.windowWidth, context.windowHeight,
+                                x, y, r, g, b, 255);
+
+                            // Update depth buffer with inverse z
+                            context.depthBuffer[depthIndex] = inv_z;
+                        }
+                    }
                 }
             }
         }
@@ -230,7 +265,7 @@ Mat4x4 ComputeCameraMatrix(const Camera& camera)
     return MultiplyMat4x4(invRotation, invTranslation);
 }
 
-void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext context)
+void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext& context, Vector3 color)
 {
     // Compute transforms ONCE per instance
     Mat4x4 cameraMatrix = ComputeCameraMatrix(camera);
@@ -246,21 +281,50 @@ void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext 
     
     // Project all vertices from the clipped model
     std::vector<Vector2> projected;
+    std::vector<float> depths;
     for (const Vector3& vertex : clipped->vertices)
     {
+        depths.push_back(vertex.z);
         // Vertex is already in camera space, just project to screen
         Vector2 screenPos = ProjectVertex(vertex, context);
         projected.push_back(screenPos);
     }
     
-    // Draw triangles using projected vertices
+    // Draw triangles using projected vertices with depth values
     for (const Triangle& tri : clipped->triangles)
     {
-        DrawWireframeTriangle(context,
-            projected[tri.v0],
-            projected[tri.v1],
-            projected[tri.v2],
-            Color::Blue);
+        // Back face culling: check in camera space before projecting
+        // Get the actual camera-space vertices (not screen coordinates)
+        const Vector3& v0 = clipped->vertices[tri.v0];
+        const Vector3& v1 = clipped->vertices[tri.v1];
+        const Vector3& v2 = clipped->vertices[tri.v2];
+        
+        // Calculate normal using camera-space vertices
+        // Normal = (v1 - v0) × (v2 - v0)
+        Vector3 edge1 = v1 - v0;
+        Vector3 edge2 = v2 - v0;
+        Vector3 normal = CrossProduct(edge1, edge2);
+        
+        // In camera space, camera is at origin (0,0,0)
+        // Calculate view vector from triangle center to camera
+        Vector3 triangleCenter = (v0 + v1 + v2) * (1.0f / 3.0f);
+        Vector3 viewVector = Vector3{0, 0, 0} - triangleCenter;  // From triangle to camera
+        
+        // Dot product: normal · viewVector
+        // If > 0: normal points towards camera (front face) - keep it
+        // If <= 0: normal points away from camera (back face) - cull it
+        float dotProduct = normal * viewVector;
+        
+        if (dotProduct <= 0.0f) {
+            continue;  // Skip back-facing triangles
+        }
+        
+        // Construct Vector3 inputs: x,y are screen coordinates, z is camera-space depth
+        Vector3 P0 = {projected[tri.v0].x, projected[tri.v0].y, depths[tri.v0]};
+        Vector3 P1 = {projected[tri.v1].x, projected[tri.v1].y, depths[tri.v1]};
+        Vector3 P2 = {projected[tri.v2].x, projected[tri.v2].y, depths[tri.v2]};
+        
+        DrawFilledTriangle(context, P0, P1, P2, color);
     }
     
     // Clean up the clipped model
@@ -430,5 +494,12 @@ Model* TransformAndClip(const std::vector<Plane>& clipping_planes,
     clipped->bounds_radius = radius;
     
     return clipped;
+}
+
+void ClearDepthBuffer(RenderContext& context)
+{
+    // Initialize depth buffer to 0 (or negative infinity) since we're using inverse z
+    // Larger 1/z = closer, so we want to start with the smallest value (0 or negative)
+    context.depthBuffer = std::vector<float>(context.windowWidth * context.windowHeight, 0.0f);
 }
 

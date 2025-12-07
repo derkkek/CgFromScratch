@@ -14,6 +14,7 @@ struct RenderContext
     float viewportWidth;
     float viewportHeight;
     float cameraToViewportDistance;
+    std::vector<float> depthBuffer;
 };
 struct Triangle
 {
@@ -77,11 +78,11 @@ void DrawWireframeTriangle(RenderContext context, Vector2 P0, Vector2 P1, Vector
 
 std::vector<float> Interpolate(float i0, float d0, float i1, float d1);
 
-void DrawFilledTriangle(RenderContext context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color);
+void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color);
 
 Model CreateCube();
 
-void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext context);
+void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext& context, Vector3 color = Color::Blue);
 
 // Camera helper function
 void TranslateCamera(Camera& cam, Vector3 translation);
@@ -95,3 +96,5 @@ Mat4x4 ComputeCameraMatrix(const Camera& camera);
 void ClipTriangle(const Triangle& triangle, const Plane& plane, std::vector<Triangle>& triangles, std::vector<Vector3>& vertices);
 
 Model* TransformAndClip(const std::vector<Plane>& clipping_planes, const Model& model, float scale, const Mat4x4& transform);
+
+void ClearDepthBuffer(RenderContext& context);

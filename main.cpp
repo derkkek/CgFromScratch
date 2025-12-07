@@ -65,14 +65,18 @@ int main(int argc, char* argv[])
                 renderContext.windowWidth = w;
                 renderContext.windowHeight = h;
                 renderContext.surface = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_RGBA8888);
+                // Recreate the depth buffer with new dimensions
+                ClearDepthBuffer(renderContext);
             }
         }
 
         // Clear the RGBA surface (e.g., to white with full opacity)
         SDL_ClearSurface(renderContext.surface, 0, 0, 0, 255);
-        RenderModelInstance(cube0, cam, renderContext);
-        RenderModelInstance(cube1, cam, renderContext);
-        RenderModelInstance(cube2, cam, renderContext);
+        // Clear the depth buffer
+        ClearDepthBuffer(renderContext);
+        RenderModelInstance(cube0, cam, renderContext, Color::Red);
+        RenderModelInstance(cube1, cam, renderContext, Color::Green);
+        RenderModelInstance(cube2, cam, renderContext, Color::Blue);
 
         // CRITICAL: Blit your RGBA surface to the window surface
         SDL_Surface* windowSurface = SDL_GetWindowSurface(renderContext.window);
