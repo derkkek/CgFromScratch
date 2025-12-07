@@ -78,6 +78,8 @@ Vector3 CrossProduct(Vector3 a, Vector3 b);
 
 float Length(Vector3 v);
 
+Vector3 Normalize(Vector3 v);
+
 Vector3 MultiplyVectorByScalar(Vector3 v, float s);
 
 Line DrawLine(Vector2 P0, Vector2 P1, Vector3 color);

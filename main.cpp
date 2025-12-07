@@ -74,9 +74,23 @@ int main(int argc, char* argv[])
         SDL_ClearSurface(renderContext.surface, 0, 0, 0, 255);
         // Clear the depth buffer
         ClearDepthBuffer(renderContext);
-        RenderModelInstance(cube0, cam, renderContext, Color::Red);
-        RenderModelInstance(cube1, cam, renderContext, Color::Green);
-        RenderModelInstance(cube2, cam, renderContext, Color::Blue);
+        
+        // Set up lighting
+        Light light;
+        light.position = Vector3{5, 5, 5};  // Light position in world space
+        light.color = Color::White;
+        light.intensity = 1.0f;
+        
+        // Set up material
+        Material material;
+        material.ambient = Vector3{50, 50, 50};    // Low ambient
+        material.diffuse = Color::Red;          // White diffuse
+        material.specular = Color::Blue;          // White specular
+        material.shininess = 32.0f;               // Moderate shininess
+        
+        RenderModelInstance(cube0, cam, renderContext, light, material);
+        RenderModelInstance(cube1, cam, renderContext, light, material);
+        RenderModelInstance(cube2, cam, renderContext, light, material);
 
         // CRITICAL: Blit your RGBA surface to the window surface
         SDL_Surface* windowSurface = SDL_GetWindowSurface(renderContext.window);

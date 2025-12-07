@@ -52,6 +52,21 @@ struct ModelInstance
     Mat4x4 transform;
 };
 
+struct Light
+{
+    Vector3 position;      // Light position in world space
+    Vector3 color;         // Light color (RGB, 0-255 range)
+    float intensity;       // Light intensity
+};
+
+struct Material
+{
+    Vector3 ambient;       // Ambient color (RGB, 0-255 range)
+    Vector3 diffuse;       // Diffuse color (RGB, 0-255 range)
+    Vector3 specular;      // Specular color (RGB, 0-255 range)
+    float shininess;       // Shininess factor (typically 1-128)
+};
+
 namespace Color
 {
     constexpr Vector3 Red = { 255, 0, 0 };
@@ -78,11 +93,14 @@ void DrawWireframeTriangle(RenderContext context, Vector2 P0, Vector2 P1, Vector
 
 std::vector<float> Interpolate(float i0, float d0, float i1, float d1);
 
-void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color);
+void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 P2, 
+                        Vector3 N0, Vector3 N1, Vector3 N2, 
+                        Vector3 cameraPos, Light light, Material material);
 
 Model CreateCube();
 
-void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext& context, Vector3 color = Color::Blue);
+void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext& context, 
+                        Light light, Material material);
 
 // Camera helper function
 void TranslateCamera(Camera& cam, Vector3 translation);

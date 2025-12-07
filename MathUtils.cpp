@@ -10,6 +10,15 @@ float Length(Vector3 v)
     return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
+Vector3 Normalize(Vector3 v)
+{
+    float len = Length(v);
+    if (len > 0.0001f) {
+        return v / len;
+    }
+    return Vector3{0, 0, 0};
+}
+
 Vector3 MultiplyVectorByScalar(Vector3 v, float s)
 {
     return Vector3{ s * v.x, s * v.y, s * v.z };

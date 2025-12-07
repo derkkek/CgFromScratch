@@ -96,26 +96,108 @@ std::vector<float> Interpolate(float i0, float d0, float i1, float d1)
     return values;
 }
 
-void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 P2, Vector3 color)
+// Helper function to interpolate Vector3 values (for normals)
+std::vector<Vector3> InterpolateVector3(float i0, Vector3 d0, float i1, Vector3 d1)
+{
+    std::vector<Vector3> values;
+    if (i0 == i1)
+    {
+        values.push_back(d0);
+        return values;
+    }
+    float a = 1.0f / (i1 - i0);
+    for (int i = i0; i <= i1; i++)
+    {
+        float t = (i - i0) * a;
+        values.push_back(d0 + (d1 - d0) * t);
+    }
+    return values;
+}
+
+Vector3 CalculatePhongLighting(Vector3 position, Vector3 normal, Vector3 cameraPos, Light light, Material material)
+{
+    // Normalize the normal
+    normal = Normalize(normal);
+    
+    // Light direction (from surface to light)
+    Vector3 lightDir = light.position - position;
+    float lightDistance = Length(lightDir);
+    if (lightDistance > 0.0001f) {
+        lightDir = lightDir / lightDistance;
+    } else {
+        // Light is at the same position, return only ambient
+        Vector3 ambient = material.ambient * (1.0f / 255.0f);
+        Vector3 lightColor = light.color * (1.0f / 255.0f) * light.intensity;
+
+        Vector3 finalColor = {ambient.x * lightColor.x, ambient.y * lightColor.y, ambient.z * lightColor.z};
+        finalColor.x = finalColor.x * 255.0f;
+        finalColor.y = finalColor.y * 255.0f;
+        finalColor.z = finalColor.z * 255.0f;
+        return finalColor;
+    }
+    
+    // View direction (from surface to camera)
+    Vector3 viewDir = cameraPos - position;
+    float viewDistance = Length(viewDir);
+    if (viewDistance > 0.0001f) {
+        viewDir = viewDir / viewDistance;
+    } else {
+        viewDir = Vector3{0, 0, -1};  // Default view direction
+    }
+    
+    // Ambient component
+    Vector3 ambient = material.ambient * (1.0f / 255.0f);
+    
+    // Diffuse component: max(0, N · L)
+    float NdotL = normal * lightDir;
+    if (NdotL < 0.0f) NdotL = 0.0f;
+    Vector3 diffuse = material.diffuse * (1.0f / 255.0f) * NdotL;
+    
+    // Specular component: (R · V)^shininess
+    // R = 2 * (N · L) * N - L (reflection vector)
+    Vector3 reflectDir = normal * (2.0f * NdotL) - lightDir;
+    float RdotV = reflectDir * viewDir;
+    if (RdotV < 0.0f) RdotV = 0.0f;
+    float specularFactor = powf(RdotV, material.shininess);
+    Vector3 specular = material.specular * (1.0f / 255.0f) * specularFactor;
+    
+    // Combine all components with light color and intensity
+    Vector3 lightColor = light.color * (1.0f / 255.0f) * light.intensity;
+    Vector3 combined = ambient + diffuse + specular;
+
+    Vector3 finalColor = {combined.x * lightColor.x, combined.y * lightColor.y, combined.z * lightColor.z};
+    
+    // Clamp to 0-255 range
+    finalColor.x = (finalColor.x > 1.0f) ? 255.0f : finalColor.x * 255.0f;
+    finalColor.y = (finalColor.y > 1.0f) ? 255.0f : finalColor.y * 255.0f;
+    finalColor.z = (finalColor.z > 1.0f) ? 255.0f : finalColor.z * 255.0f;
+    
+    return finalColor;
+}
+
+void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 P2,
+                        Vector3 N0, Vector3 N1, Vector3 N2,
+                        Vector3 cameraPos, Light light, Material material)
 {
     // Step 1: Sort the points so that y0 <= y1 <= y2
+    Vector3 tempP, tempN;
     if (P1.y < P0.y) {
-        Vector3 temp = P1;
-        P1 = P0;
-        P0 = temp;
+        tempP = P1; tempN = N1;
+        P1 = P0; N1 = N0;
+        P0 = tempP; N0 = tempN;
     }
     if (P2.y < P0.y) {
-        Vector3 temp = P2;
-        P2 = P0;
-        P0 = temp;
+        tempP = P2; tempN = N2;
+        P2 = P0; N2 = N0;
+        P0 = tempP; N0 = tempN;
     }
     if (P2.y < P1.y) {
-        Vector3 temp = P2;
-        P2 = P1;
-        P1 = temp;
+        tempP = P2; tempN = N2;
+        P2 = P1; N2 = N1;
+        P1 = tempP; N1 = tempN;
     }
 
-    // Step 2: Convert z values to inverse z (1/z) for perspective-correct depth interpolation
+    // Step 2: Convert z values to inverse z (1/z) for perspective-correct interpolation
     // Skip triangles with invalid depth values (z <= 0 means behind camera, should be clipped)
     if (P0.z <= 0.0f || P1.z <= 0.0f || P2.z <= 0.0f) {
         return;  // Skip triangles behind the camera
@@ -124,16 +206,25 @@ void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 
     float inv_z0 = 1.0f / P0.z;
     float inv_z1 = 1.0f / P1.z;
     float inv_z2 = 1.0f / P2.z;
+    
+    // For perspective-correct normal interpolation, we need to interpolate N/z and then normalize
+    // N0/z0, N1/z1, N2/z2
+    Vector3 N0_over_z = N0 * inv_z0;
+    Vector3 N1_over_z = N1 * inv_z1;
+    Vector3 N2_over_z = N2 * inv_z2;
 
-    // Step 3: Compute the x coordinates and inverse z values of the triangle edges
+    // Step 3: Compute the x coordinates, inverse z values, and normals of the triangle edges
     std::vector<float> x01 = Interpolate(P0.y, P0.x, P1.y, P1.x);
     std::vector<float> inv_z01 = Interpolate(P0.y, inv_z0, P1.y, inv_z1);
+    std::vector<Vector3> N01_over_z = InterpolateVector3(P0.y, N0_over_z, P1.y, N1_over_z);
 
     std::vector<float> x12 = Interpolate(P1.y, P1.x, P2.y, P2.x);
     std::vector<float> inv_z12 = Interpolate(P1.y, inv_z1, P2.y, inv_z2);
+    std::vector<Vector3> N12_over_z = InterpolateVector3(P1.y, N1_over_z, P2.y, N2_over_z);
 
     std::vector<float> x02 = Interpolate(P0.y, P0.x, P2.y, P2.x);
     std::vector<float> inv_z02 = Interpolate(P0.y, inv_z0, P2.y, inv_z2);
+    std::vector<Vector3> N02_over_z = InterpolateVector3(P0.y, N0_over_z, P2.y, N2_over_z);
 
     // Step 4: Concatenate the short sides
     x01.pop_back();
@@ -143,23 +234,32 @@ void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 
     inv_z01.pop_back();
     std::vector<float> inv_z012 = inv_z01;
     inv_z012.insert(inv_z012.end(), inv_z12.begin(), inv_z12.end());
+    
+    N01_over_z.pop_back();
+    std::vector<Vector3> N012_over_z = N01_over_z;
+    N012_over_z.insert(N012_over_z.end(), N12_over_z.begin(), N12_over_z.end());
 
     // Step 5: Determine which is left and which is right
     int m = x012.size() / 2;
     std::vector<float> x_left, x_right, inv_z_left, inv_z_right;
+    std::vector<Vector3> N_left_over_z, N_right_over_z;
 
     if (x02[m] < x012[m])
     {
         x_left = x02;
         inv_z_left = inv_z02;
+        N_left_over_z = N02_over_z;
         x_right = x012;
         inv_z_right = inv_z012;
+        N_right_over_z = N012_over_z;
     }
     else {
         x_left = x012;
         inv_z_left = inv_z012;
+        N_left_over_z = N012_over_z;
         x_right = x02;
         inv_z_right = inv_z02;
+        N_right_over_z = N02_over_z;
     }
 
     // Step 6: Draw the horizontal segments
@@ -172,16 +272,23 @@ void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 
             int xl = (int)x_left[index];
             int xr = (int)x_right[index];
 
-            // Interpolate inverse z values across this scanline
+            // Interpolate inverse z values and normals across this scanline
             std::vector<float> inv_z_segment = Interpolate(xl, inv_z_left[index], xr, inv_z_right[index]);
+            std::vector<Vector3> N_segment_over_z = InterpolateVector3(xl, N_left_over_z[index], xr, N_right_over_z[index]);
 
             for (int x = xl; x <= xr; x++)
             {
                 int x_index = x - xl;  // Convert to 0-based index
 
-                if (x_index >= 0 && x_index < inv_z_segment.size()) 
+                if (x_index >= 0 && x_index < inv_z_segment.size() && x_index < N_segment_over_z.size()) 
                 {
                     float inv_z = inv_z_segment[x_index];  // This is the interpolated inverse depth value
+                    Vector3 N_over_z = N_segment_over_z[x_index];
+                    
+                    // Recover the normal: N = (N/z) / (1/z) = (N/z) * z
+                    float z = 1.0f / inv_z;
+                    Vector3 normal = N_over_z * z;
+                    normal = Normalize(normal);
 
                     // Calculate depth buffer index
                     int screen_x = (int)context.windowWidth / 2 + x;
@@ -194,14 +301,24 @@ void DrawFilledTriangle(RenderContext& context, Vector3 P0, Vector3 P1, Vector3 
                         depthIndex >= 0 && depthIndex < (int)context.depthBuffer.size()) 
                     {
                         // Depth test: only draw if this pixel is closer (larger 1/z = closer)
-                        // Since depth buffer is initialized to 0.0f, any positive inv_z will be closer
                         if (inv_z > context.depthBuffer[depthIndex]) 
                         {
-                            // For color, we can use the original z value (1/inv_z) or just use the color directly
-                            float z = 1.0f / inv_z;
-                            uint8_t r = (uint8_t)(color.x);
-                            uint8_t g = (uint8_t)(color.y);
-                            uint8_t b = (uint8_t)(color.z);
+                            // Calculate 3D position at this pixel (for lighting calculation)
+                            // Reconstruct camera-space position from screen coordinates and depth
+                            // Screen coordinates x,y are centered at origin
+                            // Reverse the projection: viewport = screen * viewportSize / windowSize
+                            // Then: x_cam = viewport_x * z_cam / d, y_cam = viewport_y * z_cam / d (where d=1)
+                            float viewport_x = (float)x * context.viewportWidth / context.windowWidth;
+                            float viewport_y = (float)y * context.viewportHeight / context.windowHeight;
+                            float d = context.cameraToViewportDistance;  // Should be 1.0
+                            Vector3 pixelPos = Vector3{viewport_x * z / d, viewport_y * z / d, z};
+                            
+                            // Calculate Phong lighting
+                            Vector3 litColor = CalculatePhongLighting(pixelPos, normal, cameraPos, light, material);
+                            
+                            uint8_t r = (uint8_t)litColor.x;
+                            uint8_t g = (uint8_t)litColor.y;
+                            uint8_t b = (uint8_t)litColor.z;
 
                             PutPixel(context.surface, context.windowWidth, context.windowHeight,
                                 x, y, r, g, b, 255);
@@ -265,11 +382,21 @@ Mat4x4 ComputeCameraMatrix(const Camera& camera)
     return MultiplyMat4x4(invRotation, invTranslation);
 }
 
-void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext& context, Vector3 color)
+void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext& context, 
+                        Light light, Material material)
 {
     // Compute transforms ONCE per instance
     Mat4x4 cameraMatrix = ComputeCameraMatrix(camera);
     Mat4x4 finalTransform = MultiplyMat4x4(cameraMatrix, instance.transform);
+    
+    // Transform light position to camera space
+    Vector4 lightPosHomo = {light.position.x, light.position.y, light.position.z, 1.0f};
+    Vector4 lightPosCam = MultiplyMat4x4ByVector4(cameraMatrix, lightPosHomo);
+    Light lightCamSpace = light;
+    lightCamSpace.position = {lightPosCam.x, lightPosCam.y, lightPosCam.z};
+    
+    // Camera position in camera space is always (0,0,0)
+    Vector3 cameraPos = Vector3{0, 0, 0};
     
     // Transform and clip the model
     Model* clipped = TransformAndClip(camera.clipping_planes, instance.model, instance.scale, finalTransform);
@@ -303,7 +430,8 @@ void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext&
         // Normal = (v1 - v0) × (v2 - v0)
         Vector3 edge1 = v1 - v0;
         Vector3 edge2 = v2 - v0;
-        Vector3 normal = CrossProduct(edge1, edge2);
+        Vector3 faceNormal = CrossProduct(edge1, edge2);
+        faceNormal = Normalize(faceNormal);
         
         // In camera space, camera is at origin (0,0,0)
         // Calculate view vector from triangle center to camera
@@ -313,18 +441,24 @@ void RenderModelInstance(ModelInstance& instance, Camera& camera, RenderContext&
         // Dot product: normal · viewVector
         // If > 0: normal points towards camera (front face) - keep it
         // If <= 0: normal points away from camera (back face) - cull it
-        float dotProduct = normal * viewVector;
+        float dotProduct = faceNormal * viewVector;
         
         if (dotProduct <= 0.0f) {
             continue;  // Skip back-facing triangles
         }
+        
+        // For Phong shading, we use the face normal for all vertices (flat shading)
+        // In a full implementation, you'd have per-vertex normals
+        Vector3 N0 = faceNormal;
+        Vector3 N1 = faceNormal;
+        Vector3 N2 = faceNormal;
         
         // Construct Vector3 inputs: x,y are screen coordinates, z is camera-space depth
         Vector3 P0 = {projected[tri.v0].x, projected[tri.v0].y, depths[tri.v0]};
         Vector3 P1 = {projected[tri.v1].x, projected[tri.v1].y, depths[tri.v1]};
         Vector3 P2 = {projected[tri.v2].x, projected[tri.v2].y, depths[tri.v2]};
         
-        DrawFilledTriangle(context, P0, P1, P2, color);
+        DrawFilledTriangle(context, P0, P1, P2, N0, N1, N2, cameraPos, lightCamSpace, material);
     }
     
     // Clean up the clipped model
